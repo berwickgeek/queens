@@ -17,6 +17,8 @@ colors:
   pencil: "#2a344647"
   error: "#b8322a"
   success: "#2f7d4f"
+  gold: "#d49a2a"
+  gold-deep: "#8a5a12"
   on-semantic: "#ffffff"
   region-1: "#a8cbe0"
   region-2: "#f2c58a"
@@ -128,7 +130,9 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 3. Ink borders: 2.6pt (2.2pt above 8x8) where neighbouring cells are in different regions, 3.6pt outer frame, both through a gentle wobble shader (`inkWobble`).
 4. Marks: crosses (muted serif ×) and crowns (ink).
 
-**Solved banner.** A ribbon that unfurls across the board with "Crowned in 3:12" and the best time, then a Next puzzle button.
+**Solved banner.** A ribbon that unfurls under the board with "Crowned in 3:12" and the best time, a gold crown stamped on top, then a Next puzzle button.
+
+**Gilding.** On solve the crowns turn `gold` (with a `gold-deep` outline) row by row, each with a small burst of four-point stars, then a light sheen sweeps the board and a thin gold line appears inside the outer frame. Gold appears only on a solved board.
 
 ## Do's and Don'ts
 ### Do
@@ -144,9 +148,9 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Event | Motion | Haptic |
 |---|---|---|
 | Cross placed | none (frequency rule) | soft light tap |
-| Queen placed | crown scales 0.6 to 1 with spring; kingdom wash deepens over 450ms | firm medium thud |
-| Clash | clashing crowns turn red and shake 3 times over 300ms | sharp double error buzz |
-| Solve | crowns bounce in sequence, banner unfurls over 700ms | rising four-step pattern |
+| Queen placed | crown scales 0.6 to 1 with spring; kingdom wash deepens over 450ms | full-strength thud with a short rumble tail |
+| Clash | clashing crowns turn red and shake 3 times over 300ms | two sharp knocks then a gritty buzz |
+| Solve | after 450ms each row of crowns bounces and turns gold with a star burst (70ms stagger); then board pulses to 1.04, sheen sweeps, gold frame line fades in, ribbon unfurls; gold crown stamps onto the ribbon 750ms later | one tap per row rising in strength, a swelling rumble on the finale, seven sparkle ticks, a final stamp. All times from `Model/SolveTiming.swift` |
 | Undo | none | selection tick |
 
 Reduce Motion: no shake or bounce; crowns and banner fade in.

@@ -17,15 +17,30 @@ struct BoardView: View {
                 WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, inset: inset, side: side)
                 PencilGrid(n: game.n, inset: inset)
                     .stroke(Theme.pencil, lineWidth: 1)
-                InkLayer(puzzle: game.puzzle, inset: inset)
+                InkLayer(puzzle: game.puzzle, inset: inset, gilded: game.gilded, gildDelay: SolveTiming.finale(rows: game.n))
                 if let hint = game.hintCell {
                     HintMarker(cell: cell)
                         .offset(x: inset + CGFloat(hint % game.n) * cell, y: inset + CGFloat(hint / game.n) * cell)
                         .transition(.opacity)
                 }
                 marks(cell: cell)
+                if !reduceMotion {
+                    Sheen(trigger: game.solveTrigger, delay: SolveTiming.finale(rows: game.n) - 0.1, side: side)
+                        .allowsHitTesting(false)
+                }
             }
             .frame(width: side, height: side)
+            .keyframeAnimator(initialValue: 1.0, trigger: game.solveTrigger) { view, scale in
+                view.scaleEffect(scale)
+            } keyframes: { _ in
+                if reduceMotion {
+                    LinearKeyframe(1.0, duration: 0.01)
+                } else {
+                    LinearKeyframe(1.0, duration: SolveTiming.finale(rows: game.n))
+                    SpringKeyframe(1.04, duration: 0.14, spring: .snappy)
+                    SpringKeyframe(1.0, duration: 0.6, spring: .bouncy)
+                }
+            }
             .contentShape(Rectangle())
             .gesture(drag(cell: cell))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -43,7 +58,8 @@ struct BoardView: View {
                 cell: cell,
                 clashTrigger: game.clashTrigger,
                 solveTrigger: game.solveTrigger,
-                bounceDelay: Double(i / game.n) * 0.07,
+                gilded: game.gilded,
+                bounceDelay: Double(i / game.n) * SolveTiming.rowStagger,
                 reduceMotion: reduceMotion
             )
             .frame(width: cell, height: cell)
@@ -172,6 +188,8 @@ struct RegionBorders: Shape {
 private struct InkLayer: View {
     let puzzle: Puzzle
     let inset: CGFloat
+    let gilded: Bool
+    let gildDelay: Double
 
     var body: some View {
         ZStack {
@@ -180,6 +198,12 @@ private struct InkLayer: View {
             Rectangle()
                 .inset(by: inset)
                 .stroke(Theme.ink, style: StrokeStyle(lineWidth: 3.6, lineJoin: .round))
+            // A gold line inside the frame once the board is solved.
+            Rectangle()
+                .inset(by: inset + 3.2)
+                .stroke(Theme.gold, lineWidth: 2.4)
+                .opacity(gilded ? 1 : 0)
+                .animation(gilded ? .easeOut(duration: 0.5).delay(gildDelay) : .easeOut(duration: 0.2), value: gilded)
         }
         .distortionEffect(
             ShaderLibrary.inkWobble(.float(0.05), .float(1.6)),
@@ -196,6 +220,7 @@ private struct MarkView: View {
     let cell: CGFloat
     let clashTrigger: Int
     let solveTrigger: Int
+    let gilded: Bool
     let bounceDelay: Double
     let reduceMotion: Bool
 
@@ -210,7 +235,14 @@ private struct MarkView: View {
                     .foregroundStyle(Theme.muted)
                     .offset(y: -cell * 0.03)
             case .queen:
-                CrownMark(color: clashing ? Theme.error : Theme.ink)
+                if !reduceMotion {
+                    SparkleBurst(trigger: solveTrigger, delay: bounceDelay + SolveTiming.peak - 0.04, cell: cell)
+                }
+                CrownMark(
+                    color: clashing ? Theme.error : gilded ? Theme.gold : Theme.ink,
+                    gilded: gilded,
+                    colorDelay: gilded ? bounceDelay + SolveTiming.peak : 0
+                )
                     .frame(width: cell * 0.72, height: cell * 0.72)
                     .modifier(Shake(amplitude: clashing && !reduceMotion ? 4 : 0, animatableData: CGFloat(clashTrigger)))
                     .keyframeAnimator(initialValue: 1.0, trigger: solveTrigger) { view, scale in
@@ -235,13 +267,103 @@ private struct MarkView: View {
 /// Ink crown with three jewels, drawn on a 24-unit grid.
 private struct CrownMark: View {
     let color: Color
+    var gilded = false
+    var colorDelay = 0.0
 
     var body: some View {
         ZStack {
             Crown().fill(color)
+            // A dark edge keeps a gold crown readable on the pale yellow and orange kingdoms.
+            Crown().stroke(Theme.goldDeep, lineWidth: 1).opacity(gilded ? 1 : 0)
             CrownJewels().fill(Theme.paper)
         }
-        .animation(.easeOut(duration: 0.2), value: color)
+        .animation(.easeOut(duration: 0.2).delay(colorDelay), value: color)
+        .animation(.easeOut(duration: 0.2).delay(colorDelay), value: gilded)
+    }
+}
+
+/// Gold four-point stars and a ring thrown out from a crown at the top of its solve bounce.
+private struct SparkleBurst: View {
+    let trigger: Int
+    let delay: Double
+    let cell: CGFloat
+
+    var body: some View {
+        // Progress runs 0 to 1 once per trigger; at rest it sits at 1, which draws nothing.
+        Color.clear
+            .keyframeAnimator(initialValue: 1.0, trigger: trigger) { _, p in
+                ZStack {
+                    Circle()
+                        .stroke(Theme.gold, lineWidth: 2.5 * (1 - p))
+                        .frame(width: cell * (0.5 + 1.1 * p), height: cell * (0.5 + 1.1 * p))
+                    ForEach(0..<8, id: \.self) { k in
+                        let angle = Double(k) * .pi / 4 + .pi / 8
+                        let reach = cell * (0.25 + (k.isMultiple(of: 2) ? 0.75 : 0.55) * p)
+                        Sparkle()
+                            .fill(k.isMultiple(of: 2) ? Theme.gold : Theme.paper)
+                            .overlay(Sparkle().stroke(Theme.goldDeep.opacity(0.5), lineWidth: 0.6))
+                            .frame(width: cell * 0.22, height: cell * 0.22)
+                            .scaleEffect(0.4 + 0.8 * sin(.pi * min(p * 1.4, 1)))
+                            .rotationEffect(.radians(angle + p * 1.5))
+                            .offset(x: cos(angle) * reach, y: sin(angle) * reach)
+                    }
+                }
+                .opacity(p >= 1 ? 0 : 1 - p * p)
+            } keyframes: { _ in
+                LinearKeyframe(1.0, duration: max(delay, 0.01))
+                MoveKeyframe(0.0)
+                CubicKeyframe(1.0, duration: 0.75)
+            }
+            .frame(width: cell, height: cell)
+            .allowsHitTesting(false)
+    }
+}
+
+struct Sparkle: Shape {
+    func path(in rect: CGRect) -> Path {
+        let c = CGPoint(x: rect.midX, y: rect.midY)
+        let r = min(rect.width, rect.height) / 2
+        let w = r * 0.28
+        var p = Path()
+        p.move(to: CGPoint(x: c.x, y: c.y - r))
+        p.addQuadCurve(to: CGPoint(x: c.x + r, y: c.y), control: CGPoint(x: c.x + w, y: c.y - w))
+        p.addQuadCurve(to: CGPoint(x: c.x, y: c.y + r), control: CGPoint(x: c.x + w, y: c.y + w))
+        p.addQuadCurve(to: CGPoint(x: c.x - r, y: c.y), control: CGPoint(x: c.x - w, y: c.y + w))
+        p.addQuadCurve(to: CGPoint(x: c.x, y: c.y - r), control: CGPoint(x: c.x - w, y: c.y - w))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// A band of gilded light that sweeps once across the board at the finale.
+private struct Sheen: View {
+    let trigger: Int
+    let delay: Double
+    let side: CGFloat
+
+    var body: some View {
+        Color.clear
+            .keyframeAnimator(initialValue: 1.0, trigger: trigger) { _, p in
+                LinearGradient(
+                    stops: [
+                        .init(color: .white.opacity(0), location: 0),
+                        .init(color: .white.opacity(0.75), location: 0.45),
+                        .init(color: Theme.gold.opacity(0.35), location: 0.55),
+                        .init(color: .white.opacity(0), location: 1),
+                    ],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: side * 0.45, height: side * 1.8)
+                .rotationEffect(.degrees(20))
+                .offset(x: -side * 0.7 + side * 1.4 * p)
+                .opacity(p >= 1 ? 0 : 1)
+            } keyframes: { _ in
+                LinearKeyframe(1.0, duration: max(delay, 0.01))
+                MoveKeyframe(0.0)
+                CubicKeyframe(1.0, duration: 0.9)
+            }
+            .frame(width: side, height: side)
+            .clipped()
     }
 }
 

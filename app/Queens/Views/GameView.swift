@@ -18,7 +18,13 @@ struct GameView: View {
             // The ribbon sits under the board so it never hides a crown.
             Group {
                 if game.complete {
-                    SolvedBanner(time: game.elapsed(), newBest: game.newBest, hinted: game.hinted)
+                    // Just solved: wait for the board's finale. Reopened finished puzzle: show it straight away.
+                    let fresh = !game.gilded || game.solveTrigger > 0
+                    SolvedBanner(
+                        time: game.elapsed(), newBest: game.newBest, hinted: game.hinted,
+                        unfurlDelay: fresh ? SolveTiming.entrance + SolveTiming.finale(rows: game.n) : 0.1,
+                        stampDelay: fresh ? SolveTiming.entrance + SolveTiming.stamp(rows: game.n) : 0.4
+                    )
                 } else {
                     Text(game.hintText ?? " ")
                         .font(.bodyMd)
@@ -26,6 +32,7 @@ struct GameView: View {
                 }
             }
             .frame(minHeight: 52)
+            .padding(.top, 24)
             controls
             Spacer(minLength: 0)
         }

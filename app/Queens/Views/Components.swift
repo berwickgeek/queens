@@ -79,8 +79,12 @@ struct SolvedBanner: View {
     let time: Double
     let newBest: Bool
     let hinted: Bool
+    /// Seconds to wait before unfurling, and before the crown stamps down.
+    var unfurlDelay = 0.5
+    var stampDelay = 1.2
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var unfurled = false
+    @State private var stamped = false
 
     var body: some View {
         VStack(spacing: 2) {
@@ -98,9 +102,25 @@ struct SolvedBanner: View {
         .background(Ribbon().fill(Theme.success).shadow(color: Theme.ink.opacity(0.18), radius: 6, y: 3))
         .scaleEffect(x: unfurled ? 1 : 0.05, y: 1)
         .opacity(unfurled ? 1 : 0)
+        .overlay(alignment: .top) {
+            // Gold crown pressed onto the ribbon like a seal.
+            ZStack {
+                Crown().fill(Theme.gold)
+                Crown().stroke(Theme.goldDeep, lineWidth: 1.2)
+            }
+            .frame(width: 34, height: 34)
+            .shadow(color: Theme.goldDeep.opacity(0.35), radius: stamped ? 2 : 10, y: stamped ? 1 : 6)
+            .scaleEffect(stamped ? 1 : (reduceMotion ? 1 : 2.6))
+            .rotationEffect(.degrees(stamped || reduceMotion ? -8 : -40))
+            .opacity(stamped ? 1 : 0)
+            .offset(y: -26)
+        }
         .onAppear {
-            withAnimation(reduceMotion ? .easeOut(duration: 0.3) : .spring(duration: 0.7, bounce: 0.35).delay(0.5)) {
+            withAnimation(reduceMotion ? .easeOut(duration: 0.3) : .spring(duration: 0.7, bounce: 0.35).delay(unfurlDelay)) {
                 unfurled = true
+            }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.3).delay(0.3) : .spring(duration: 0.35, bounce: 0.45).delay(stampDelay - 0.12)) {
+                stamped = true
             }
         }
         .accessibilityElement(children: .combine)

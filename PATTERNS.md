@@ -9,10 +9,11 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Difficulty | `Views/Components.swift` TierDots | |
 | Puzzle thumbnail | `Views/Components.swift` MiniBoard | Canvas, no shaders |
 | Board | `Board/BoardView.swift` | Wash, pencil grid, ink borders, marks, in that z-order |
-| Celebration banner | `Views/Components.swift` SolvedBanner / Ribbon | |
+| Celebration banner | `Views/Components.swift` SolvedBanner / Ribbon | Gold crown stamp on top |
+| Solve celebration | `Board/BoardView.swift` SparkleBurst, Sheen, InkLayer gilding | Every delay comes from `Model/SolveTiming.swift` so haptics and visuals land together |
 | Grid tile | `Views/RealmView.swift` PuzzleTile | |
 | Haptic per action | `Model/Haptics.swift` | One haptic per user action, same frame as the visual |
 
 ## New patterns log
 
-(none yet)
+- Solve celebration (gold gilding, star bursts, sheen, stamp) with `SolveTiming` as the shared clock, because Jay asked for a bigger reward on solve.

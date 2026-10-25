@@ -11,6 +11,9 @@ enum Theme {
     static let pencil = Color(hex: 0x2a3446).opacity(0.28)
     static let error = Color(hex: 0xb8322a)
     static let success = Color(hex: 0x2f7d4f)
+    /// Gilding for a solved board: crowns, sparkles, the stamp on the ribbon.
+    static let gold = Color(hex: 0xd49a2a)
+    static let goldDeep = Color(hex: 0x8a5a12)
 
     static let regions: [Color] = [
         0xa8cbe0, 0xf2c58a, 0xb9d9a3, 0xe9a9a1, 0xcbb8de, 0xf1e28f,

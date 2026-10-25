@@ -22,6 +22,8 @@ final class GameModel {
     /// Bumped to replay the clash shake and the solve bounce.
     private(set) var clashTrigger = 0
     private(set) var solveTrigger = 0
+    /// Crowns turn gold once the solve celebration starts (and stay gold on a finished board).
+    private(set) var gilded: Bool
 
     private var undoStack: [[Mark]] = []
     private var accumulated: Double
@@ -42,6 +44,7 @@ final class GameModel {
         marks = saved.count == puzzle.size * puzzle.size ? saved : Array(repeating: .empty, count: puzzle.size * puzzle.size)
         accumulated = rec.elapsed
         complete = rec.complete
+        gilded = rec.complete
         hinted = rec.hinted
         bestTime = rec.bestTime
         clashes = computeClashes()
@@ -158,10 +161,13 @@ final class GameModel {
             newBest = bestTime != nil
             bestTime = time
         }
-        Haptics.shared.solved()
+        Haptics.shared.queen()
         // Let the last crown finish its entrance before every crown bounces.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(450))
+            guard complete else { return }
+            Haptics.shared.solved(rows: n)
+            gilded = true
             solveTrigger += 1
         }
     }
@@ -195,6 +201,7 @@ final class GameModel {
         undoStack.removeAll()
         accumulated = 0
         complete = false
+        gilded = false
         hinted = false
         newBest = false
         persist()
