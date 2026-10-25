@@ -17,11 +17,21 @@ struct BoardView: View {
                 WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, inset: inset, side: side)
                 PencilGrid(n: game.n, inset: inset)
                     .stroke(Theme.pencil, lineWidth: 1)
-                InkLayer(puzzle: game.puzzle, inset: inset, gilded: game.gilded, gildDelay: SolveTiming.finale(rows: game.n))
-                if let hint = game.hintCell {
-                    HintMarker(cell: cell)
-                        .offset(x: inset + CGFloat(hint % game.n) * cell, y: inset + CGFloat(hint / game.n) * cell)
+                if let step = game.clueStep, !step.focus.isEmpty {
+                    Spotlight(n: game.n, inset: inset, focus: game.clueFocusCells)
+                        .fill(Theme.paper.opacity(0.62))
+                        .allowsHitTesting(false)
                         .transition(.opacity)
+                }
+                InkLayer(puzzle: game.puzzle, inset: inset, gilded: game.gilded, gildDelay: SolveTiming.finale(rows: game.n))
+                if let step = game.clueStep {
+                    ForEach(step.cells.sorted(), id: \.self) { hint in
+                        Group {
+                            if step.dots { GhostCross(cell: cell) } else { HintMarker(cell: cell) }
+                        }
+                            .offset(x: inset + CGFloat(hint % game.n) * cell, y: inset + CGFloat(hint / game.n) * cell)
+                            .transition(.opacity)
+                    }
                 }
                 marks(cell: cell)
                 if !reduceMotion {
@@ -406,6 +416,41 @@ struct Shake: GeometryEffect {
 
     func effectValue(size: CGSize) -> ProjectionTransform {
         ProjectionTransform(CGAffineTransform(translationX: amplitude * sin(animatableData * .pi * 6), y: 0))
+    }
+}
+
+/// Fades every cell outside a clue's rows, columns and kingdoms, so the ones to study stand out.
+private struct Spotlight: Shape {
+    let n: Int
+    let inset: CGFloat
+    let focus: Set<Int>
+
+    func path(in rect: CGRect) -> Path {
+        let cell = (rect.width - inset * 2) / CGFloat(n)
+        var p = Path()
+        for i in 0..<(n * n) where !focus.contains(i) {
+            p.addRect(CGRect(x: inset + CGFloat(i % n) * cell, y: inset + CGFloat(i / n) * cell, width: cell, height: cell))
+        }
+        return p
+    }
+}
+
+/// A faint pulsing cross on a cell a clue says to dot.
+private struct GhostCross: View {
+    let cell: CGFloat
+    @State private var pulse = false
+
+    var body: some View {
+        Text("×")
+            .font(.serif(cell * 0.5))
+            .foregroundStyle(Theme.ink)
+            .offset(y: -cell * 0.03)
+            .frame(width: cell, height: cell)
+            .opacity(pulse ? 0.2 : 0.55)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { pulse = true }
+            }
+            .allowsHitTesting(false)
     }
 }
 

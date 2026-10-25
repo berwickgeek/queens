@@ -25,10 +25,17 @@ struct GameView: View {
                         unfurlDelay: fresh ? SolveTiming.entrance + SolveTiming.finale(rows: game.n) : 0.1,
                         stampDelay: fresh ? SolveTiming.entrance + SolveTiming.stamp(rows: game.n) : 0.4
                     )
-                } else {
-                    Text(game.hintText ?? " ")
+                } else if let step = game.clueStep {
+                    Text(step.text)
                         .font(.bodyMd)
-                        .foregroundStyle(Theme.muted)
+                        .foregroundStyle(Theme.ink)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 24)
+                        .id(step.text)
+                        .transition(.opacity)
+                } else {
+                    Text(" ").font(.bodyMd)
                 }
             }
             .frame(minHeight: 52)
@@ -86,10 +93,14 @@ struct GameView: View {
                     .disabled(!game.canUndo)
                 Button { game.clear() } label: { Label("Clear", systemImage: "eraser") }
                     .disabled(game.isBlank)
-                Button { game.hint() } label: { Label("Hint", systemImage: "lightbulb") }
+                Button { game.hint() } label: {
+                    Label(game.clueHasMore ? "More" : "Hint", systemImage: game.clueHasMore ? "lightbulb.fill" : "lightbulb")
+                }
             }
             .buttonStyle(PillButtonStyle())
             .labelStyle(.titleAndIcon)
+            .lineLimit(1)
+            .fixedSize()
             .transition(.opacity)
         }
     }

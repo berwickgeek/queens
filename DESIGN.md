@@ -132,6 +132,8 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 
 **Solved banner.** A ribbon that unfurls under the board with "Crowned in 3:12" and the best time, a gold crown stamped on top, then a Next puzzle button.
 
+**Clues.** Hint gives a clue, not an answer, in up to three steps: where to look (the rows, columns or kingdoms involved stay bright, the rest of the board fades under paper at 62%), then why, then which cells (faint pulsing crosses for cells to dot, a dashed outline for a crown or a cell to test). The button reads More while a clue has another step. Kingdoms are named by colour (`Theme.regionNames`), rows and columns are counted from the top left.
+
 **Gilding.** On solve the crowns turn `gold` (with a `gold-deep` outline) row by row, each with a small burst of four-point stars, then a light sheen sweeps the board and a thin gold line appears inside the outer frame. Gold appears only on a solved board.
 
 ## Do's and Don'ts

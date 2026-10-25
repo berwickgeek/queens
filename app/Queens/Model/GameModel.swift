@@ -17,8 +17,9 @@ final class GameModel {
     private(set) var hinted: Bool
     private(set) var bestTime: Double?
     private(set) var newBest = false
-    private(set) var hintCell: Int?
-    private(set) var hintText: String?
+    /// The clue on show and how far into it the player has asked.
+    private(set) var clue: Clue?
+    private(set) var clueLevel = 0
     /// Bumped to replay the clash shake and the solve bounce.
     private(set) var clashTrigger = 0
     private(set) var solveTrigger = 0
@@ -55,6 +56,26 @@ final class GameModel {
     var queenCount: Int { marks.lazy.filter { $0 == .queen }.count }
     var canUndo: Bool { !undoStack.isEmpty && !complete }
     var isBlank: Bool { !marks.contains { $0 != .empty } }
+
+    var clueStep: ClueStep? { clue.map { $0.steps[min(clueLevel, $0.steps.count - 1)] } }
+    var clueHasMore: Bool { clue.map { clueLevel < $0.steps.count - 1 } ?? false }
+
+    /// Cells inside the spotlighted rows, columns and kingdoms.
+    var clueFocusCells: Set<Int> {
+        guard let step = clueStep else { return [] }
+        var out = Set<Int>()
+        for u in step.focus {
+            for i in 0..<(n * n) {
+                switch u {
+                case .row(let r) where i / n == r: out.insert(i)
+                case .col(let c) where i % n == c: out.insert(i)
+                case .region(let g) where puzzle.regionOf[i] == g: out.insert(i)
+                default: break
+                }
+            }
+        }
+        return out
+    }
 
     var claimedRegions: Set<Int> {
         Set(marks.indices.filter { marks[$0] == .queen }.map { puzzle.regionOf[$0] })
@@ -104,7 +125,7 @@ final class GameModel {
     func touchEnded() {
         defer { dragStart = nil; dragMode = nil }
         guard !complete, let start = dragStart else { return }
-        if dragMoved { persist() } else { tap(start) }
+        if dragMoved { refreshClue(); persist() } else { tap(start) }
     }
 
     private func paint(_ cell: Int) {
@@ -123,7 +144,7 @@ final class GameModel {
     /// Empty, then cross, then queen, then empty.
     func tap(_ cell: Int) {
         pushUndo()
-        clearHint()
+        defer { refreshClue() }
         switch marks[cell] {
         case .empty:
             marks[cell] = .cross
@@ -176,8 +197,8 @@ final class GameModel {
 
     func undo() {
         guard !complete, let last = undoStack.popLast() else { return }
-        clearHint()
         marks = last
+        refreshClue()
         withAnimation(.easeOut(duration: 0.2)) { clashes = computeClashes() }
         Haptics.shared.undo()
         persist()
@@ -196,6 +217,7 @@ final class GameModel {
     }
 
     func playAgain() {
+        clue = nil
         marks = Array(repeating: .empty, count: n * n)
         clashes = []
         undoStack.removeAll()
@@ -208,46 +230,47 @@ final class GameModel {
         resume()
     }
 
-    /// Points at a mistake if there is one, otherwise at the most constrained queen still to place.
+    /// Points at a mistake if there is one. Otherwise gives the easiest deduction, a step at a time:
+    /// asking again for the same deduction reveals its next step.
     func hint() {
         guard !complete else { return }
         hinted = true
         let answer = puzzle.solutionCells
+        let fresh: Clue
         if let wrong = marks.indices.first(where: { marks[$0] == .queen && !answer.contains($0) }) {
-            showHint(wrong, "That crown is in the wrong place.")
+            fresh = Clue(steps: [ClueStep(text: "That crown is in the wrong place.", cells: [wrong])], targets: [wrong], transient: true)
         } else if let wrong = marks.indices.first(where: { marks[$0] == .cross && answer.contains($0) }) {
-            showHint(wrong, "A crown belongs under that cross.")
+            fresh = Clue(steps: [ClueStep(text: "A crown belongs under that cross.", cells: [wrong])], targets: [wrong], transient: true)
+        } else if let found = HintEngine(puzzle: puzzle, marks: marks).next() {
+            fresh = found
         } else {
-            let open = answer.filter { marks[$0] != .queen }
-            let best = open.min { openCells(inRegionOf: $0) < openCells(inRegionOf: $1) }
-            if let best { showHint(best, "A crown belongs here.") }
+            // The engine covers every rule the generator used, so this is only a backstop.
+            guard let cell = answer.first(where: { marks[$0] != .queen }) else { return }
+            fresh = Clue(steps: [ClueStep(text: "A crown belongs here.", cells: [cell])], targets: [cell])
+        }
+        withAnimation(.easeOut(duration: 0.25)) {
+            if let clue, clue.targets == fresh.targets, !fresh.transient {
+                clueLevel = min(clueLevel + 1, clue.steps.count - 1)
+            } else {
+                clue = fresh
+                clueLevel = 0
+            }
         }
         Haptics.shared.undo()
         persist()
     }
 
-    private func openCells(inRegionOf cell: Int) -> Int {
-        let g = puzzle.regionOf[cell]
-        return marks.indices.filter { puzzle.regionOf[$0] == g && marks[$0] == .empty }.count
-    }
-
-    private func showHint(_ cell: Int, _ text: String) {
-        withAnimation(.easeOut(duration: 0.2)) {
-            hintCell = cell
-            hintText = text
-        }
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(4))
-            guard let self, self.hintCell == cell else { return }
-            self.clearHint()
-        }
+    /// A clue stays up while the player acts on it, and goes once its cells are all marked.
+    private func refreshClue() {
+        guard let clue else { return }
+        if clue.transient || clue.targets.allSatisfy({ marks[$0] != .empty }) { clearHint() }
     }
 
     private func clearHint() {
-        guard hintCell != nil else { return }
+        guard clue != nil else { return }
         withAnimation(.easeOut(duration: 0.3)) {
-            hintCell = nil
-            hintText = nil
+            clue = nil
+            clueLevel = 0
         }
     }
 

@@ -20,6 +20,12 @@ enum Theme {
         0x9ed1c6, 0xe6b8cf, 0xc9c48a, 0xf4b98c, 0xb4c1e3,
     ].map { Color(hex: $0) }
 
+    /// How hints name each pigment, in the same order.
+    static let regionNames = [
+        "blue", "apricot", "green", "coral", "lavender", "yellow",
+        "teal", "pink", "olive", "orange", "periwinkle",
+    ]
+
     static func region(_ index: Int) -> Color { regions[index % regions.count] }
 
     /// Unclaimed kingdoms paint lighter; a kingdom with its queen paints at full strength.
