@@ -1,0 +1,162 @@
+---
+version: alpha
+name: Queens
+description: An offline Queens puzzle game for one player (Jay) on iPhone, styled as a hand-drawn storybook map.
+authority: design-skill
+scope: app
+takeover_date: null
+colors:
+  primary: "#2a3446"
+  on-primary: "#fbfcfd"
+  surface: "#fbfcfd"
+  surface-sunken: "#f1f3f6"
+  border: "#d9dee6"
+  on-surface: "#2a3446"
+  on-surface-muted: "#5a6578"
+  heading: "#2a3446"
+  pencil: "#2a344647"
+  error: "#b8322a"
+  success: "#2f7d4f"
+  on-semantic: "#ffffff"
+  region-1: "#a8cbe0"
+  region-2: "#f2c58a"
+  region-3: "#b9d9a3"
+  region-4: "#e9a9a1"
+  region-5: "#cbb8de"
+  region-6: "#f1e28f"
+  region-7: "#9ed1c6"
+  region-8: "#e6b8cf"
+  region-9: "#c9c48a"
+  region-10: "#f4b98c"
+  region-11: "#b4c1e3"
+typography:
+  display-lg: { fontFamily: Young Serif, fontSize: 34px, fontWeight: 400, lineHeight: 1.1 }
+  headline-md: { fontFamily: Young Serif, fontSize: 28px, fontWeight: 400, lineHeight: 1.15 }
+  headline-sm: { fontFamily: Young Serif, fontSize: 20px, fontWeight: 400, lineHeight: 1.2 }
+  body-md: { fontFamily: Nunito Sans, fontSize: 16px, fontWeight: 400, lineHeight: 1.45 }
+  body-sm: { fontFamily: Nunito Sans, fontSize: 14px, fontWeight: 400, lineHeight: 1.4 }
+  label-md: { fontFamily: Nunito Sans, fontSize: 15px, fontWeight: 700, lineHeight: 1.2 }
+  timer: { fontFamily: Nunito Sans, fontSize: 15px, fontWeight: 700, lineHeight: 1.2, fontFeature: "'tnum' 1" }
+rounded: { sm: 6px, md: 12px, lg: 20px, full: 9999px }
+spacing: { xs: 4px, sm: 8px, md: 16px, lg: 24px, xl: 32px }
+motion: { press: 120ms, mark: 180ms, wash: 450ms, banner: 700ms, spring: "spring(duration 0.4, bounce 0.2)" }
+components:
+  button-outline: { backgroundColor: "{colors.surface}", textColor: "{colors.on-surface}", rounded: "{rounded.full}", typography: "{typography.label-md}", height: 52px }
+  button-primary: { backgroundColor: "{colors.primary}", textColor: "{colors.on-primary}", rounded: "{rounded.full}", typography: "{typography.label-md}", height: 52px }
+  realm-card: { backgroundColor: "{colors.surface}", textColor: "{colors.on-surface}", rounded: "{rounded.lg}" }
+  puzzle-tile: { backgroundColor: "{colors.surface-sunken}", textColor: "{colors.on-surface-muted}", rounded: "{rounded.sm}" }
+  clash-mark: { backgroundColor: "{colors.surface}", textColor: "{colors.error}" }
+  solved-tick: { backgroundColor: "{colors.surface}", textColor: "{colors.success}" }
+---
+
+# Queens design system
+
+## Overview
+Storybook map. Each puzzle is a small hand-drawn map: regions are kingdoms painted in soft watercolour, borders are wobbly ink, and a fine pencil grid shows every row and column. Queens are crowns. Tone: whimsical, calm, tactile. Density is low: one board per screen, nothing competing with it.
+
+The person is Jay, playing one-handed on his iPhone in short sessions, picking up where he left off. The board is the only thing that matters on the game screen; everything else is quiet and sits at the bottom within thumb reach.
+
+The memorable element is the board itself: watercolour washes that deepen as kingdoms receive their queen, under a pencil grid and inked borders.
+
+## Colors
+### Brand & Accent
+`primary` (ink, #2a3446) is the only accent. It draws borders, crowns, titles and the filled button. Contrast on `surface`: 12.0:1.
+
+### Surface
+`surface` (#fbfcfd, paper) is the page. `surface-sunken` backs unplayed puzzle tiles. `border` outlines cards.
+
+### Text
+`on-surface` for body and titles, `on-surface-muted` (#5a6578, 5.7:1 on paper) for secondary text and crosses.
+
+### Semantic
+`error` marks clashing queens (red crown plus a shake, never colour alone: the haptic and the motion carry it too). `success` is the solved tick in the picker, always paired with the best time.
+
+### Region palette
+Eleven watercolour pigments, `region-1` to `region-11`, assigned by region letter (a to k). Unclaimed kingdoms paint at 78% strength; a kingdom with a queen paints at 100%. Crosses and crowns are ink on top, so contrast comes from the ink, not the pigment.
+
+## Typography
+### Font Family
+Young Serif (OFL, bundled) for titles and puzzle names. Nunito Sans (OFL, bundled as static 400/700/800 instances) for everything else. Fallback: system serif and SF Pro.
+
+### Hierarchy
+| Token | Size | Use |
+|---|---|---|
+| display-lg | 34 | Home title |
+| headline-md | 28 | Puzzle name on the game screen |
+| headline-sm | 20 | Realm names, banner |
+| body-md | 16 | Body |
+| body-sm | 14 | Captions, tile labels |
+| label-md | 15 bold | Buttons |
+| timer | 15 bold, tabular | Timer and best times |
+
+### Principles
+Sentence case everywhere. Puzzle names are generated storybook names ("The Marsh of Eight"). Times always use tabular numerals.
+
+## Layout
+### Spacing System
+4pt base: 4, 8, 16, 24, 32.
+
+### Grid & Container
+Board fills the width minus 18pt each side, centred under the title. Controls are a row of three pill buttons pinned above the home indicator.
+
+### Whitespace Philosophy
+Paper shows around the board. No cards on the game screen.
+
+## Elevation & Depth
+Flat. No shadows except the solved banner, which floats over the board with one soft shadow.
+
+## Shapes
+Pills for buttons, 20pt radius for realm cards, 6pt for puzzle tiles. The board itself is square-cornered (a map sheet).
+
+## Components
+### Buttons
+`button-outline`: 1.5pt ink outline on paper, used for Undo, Clear, Hint. `button-primary`: ink fill, used once per screen (Next puzzle on the banner).
+
+### Cards & Containers
+`realm-card`: one per board size on Home, with the realm name, size, and progress (crowned of total) as a thin ink bar.
+
+### Navigation
+System NavigationStack. Home, then realm (puzzle grid), then game.
+
+### Pills, Tags, and Chips
+Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
+
+### Signature Components
+**Board.** Layers, bottom to top:
+1. Watercolour wash: each cell filled with its region pigment, run through a noise distortion shader so edges bleed, plus a pigment granulation shader.
+2. Pencil grid: 0.5pt line at 28% ink between every cell.
+3. Ink borders: 2.6pt (2.2pt above 8x8) where neighbouring cells are in different regions, 3.6pt outer frame, both through a gentle wobble shader (`inkWobble`).
+4. Marks: crosses (muted serif ×) and crowns (ink).
+
+**Solved banner.** A ribbon that unfurls across the board with "Crowned in 3:12" and the best time, then a Next puzzle button.
+
+## Do's and Don'ts
+### Do
+- Keep the board the largest thing on screen.
+- Pair every error with haptic and motion as well as colour.
+- Use generated storybook names for puzzles and realms.
+### Don't
+- No dark mode.
+- No confetti or score popups. Celebrations stay inside the map metaphor.
+- Do not animate crosses; they are placed dozens of times per puzzle.
+
+## Motion
+| Event | Motion | Haptic |
+|---|---|---|
+| Cross placed | none (frequency rule) | soft light tap |
+| Queen placed | crown scales 0.6 to 1 with spring; kingdom wash deepens over 450ms | firm medium thud |
+| Clash | clashing crowns turn red and shake 3 times over 300ms | sharp double error buzz |
+| Solve | crowns bounce in sequence, banner unfurls over 700ms | rising four-step pattern |
+| Undo | none | selection tick |
+
+Reduce Motion: no shake or bounce; crowns and banner fade in.
+
+## States
+| State | Rule |
+|---|---|
+| Hover | Not applicable (touch only) |
+| Focus | System focus for VoiceOver; each cell labelled "Row 3, column F, Marsh kingdom, queen" |
+| Disabled | Undo disabled at 40% opacity when there is nothing to undo |
+| Loading | Puzzles load from the bundle at launch, under 100ms; no spinner |
+| Empty | Never empty: every realm ships with 120 puzzles |
+| Error | Clashing queens shown red with shake and haptic; no blocking dialogs |
