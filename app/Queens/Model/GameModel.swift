@@ -159,7 +159,11 @@ final class GameModel {
             bestTime = time
         }
         Haptics.shared.solved()
-        solveTrigger += 1
+        // Let the last crown finish its entrance before every crown bounces.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            solveTrigger += 1
+        }
     }
 
     // MARK: Commands

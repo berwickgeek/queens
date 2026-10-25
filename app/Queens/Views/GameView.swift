@@ -14,16 +14,18 @@ struct GameView: View {
             header
             Spacer(minLength: 4)
             BoardView(game: game)
-                .overlay {
-                    if game.complete {
-                        SolvedBanner(time: game.elapsed(), newBest: game.newBest, hinted: game.hinted)
-                    }
-                }
                 .padding(.horizontal, 12)
-            Text(game.hintText ?? " ")
-                .font(.bodyMd)
-                .foregroundStyle(Theme.muted)
-                .frame(minHeight: 22)
+            // The ribbon sits under the board so it never hides a crown.
+            Group {
+                if game.complete {
+                    SolvedBanner(time: game.elapsed(), newBest: game.newBest, hinted: game.hinted)
+                } else {
+                    Text(game.hintText ?? " ")
+                        .font(.bodyMd)
+                        .foregroundStyle(Theme.muted)
+                }
+            }
+            .frame(minHeight: 52)
             controls
             Spacer(minLength: 0)
         }

@@ -219,7 +219,8 @@ private struct MarkView: View {
                         if reduceMotion {
                             LinearKeyframe(1.0, duration: 0.01)
                         } else {
-                            LinearKeyframe(1.0, duration: bounceDelay)
+                            // A zero-length keyframe leaves the scale invalid and the row 0 crown vanishes.
+                            LinearKeyframe(1.0, duration: max(bounceDelay, 0.01))
                             SpringKeyframe(1.28, duration: 0.18, spring: .snappy)
                             SpringKeyframe(1.0, duration: 0.4, spring: .bouncy)
                         }
