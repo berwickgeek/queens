@@ -24,8 +24,12 @@ enum SolveTiming {
     /// How long the finished road stays before fading.
     static let roadLinger = 0.9
 
-    /// Lanterns rise from every crown as the road arrives at the last one.
-    static func lanterns(rows: Int) -> Double { roadEnd(rows: rows) }
+    /// Map and walls spread out through a kingdom from its crown, this long per cell of distance.
+    static let landSpread = 0.06
+    /// Time to ink one map symbol.
+    static let landDraw = 0.3
+    /// The corner towers rise just after the road reaches the last crown, then the curtain wall runs between them.
+    static func outerWall(rows: Int) -> Double { roadEnd(rows: rows) + 0.1 }
     /// The ribbon unfurls under the board.
     static func ribbon(rows: Int) -> Double { roadEnd(rows: rows) + 0.2 }
     /// The wax seal stamps onto the ribbon.

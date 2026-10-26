@@ -142,7 +142,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 
 **Clues.** Hint gives a clue, not an answer, in up to three steps: where to look (the rows, columns or kingdoms involved stay bright, the rest of the board fades under paper at 62%), then why, then which cells (faint pulsing crosses for cells to dot, a dashed outline for a crown or a cell to test). The button reads More while a clue has another step. Kingdoms are named by colour (`Theme.regionNames`), rows and columns are counted from the top left.
 
-**Gilding.** On solve the crowns turn `gold` (with a `gold-deep` outline) row by row, each with a small burst of four-point stars, then a light sheen sweeps the board and a thin gold line appears inside the outer frame. Then the coronation (`Board/Coronation.swift`): a dotted `gold-deep` royal road is drawn crown to crown from the top row down, with a spinning star at its head; as it reaches each crown, a ring of light washes through that crown's kingdom; when it reaches the last crown, small gold lanterns rise from every crown and drift up over the title. Afterwards, while the board stays gilded, one crown at a time catches the light with a small glint every 1.7s. Gold appears only on a solved board.
+**Gilding.** On solve the crowns turn `gold` (with a `gold-deep` outline) row by row, each with a small burst of four-point stars, then a light sheen sweeps the board and a thin gold line appears inside the outer frame. Then the coronation (`Board/Coronation.swift`): a dotted `gold-deep` royal road is drawn crown to crown from the top row down, with a spinning star at its head; as it reaches each crown, a ring of light washes through that crown's kingdom; the kingdom borders become castle walls, battlements rising along each border from the crown that reaches it first, and the cartographer finishes the map: every cell without a crown is inked with a map symbol, one land per kingdom (forest, highland, farmland, marsh), spreading out from the crown, while the crosses fade and each crown settles onto a small keep. When the road reaches the last crown, a round tower rises at each corner of the frame and a curtain wall of battlements runs between them. Afterwards, while the board stays gilded, one crown at a time catches the light with a small glint every 1.7s. Gold appears only on a solved board.
 
 ## Do's and Don'ts
 ### Do
@@ -160,14 +160,14 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Cross placed | none (frequency rule) | soft light tap |
 | Queen placed | crown scales 0.6 to 1 with spring; a ring of ink spreads from the cell over 500ms; kingdom wash deepens over 450ms | full-strength thud with a short rumble tail |
 | Clash | clashing crowns turn red and shake 3 times over 300ms | two sharp knocks then a gritty buzz |
-| Solve | after 450ms each row of crowns bounces and turns gold with a star burst (70ms stagger); then board pulses to 1.04, sheen sweeps, gold frame line fades in; 500ms later the royal road travels crown to crown (90ms a leg) with a kingdom ripple at each; lanterns rise for 3.4s; ribbon unfurls with the time counting up; wax seal stamps 750ms later | one tap per row rising in strength, a swelling rumble on the finale, seven sparkle ticks, a light footstep per crown on the road, a shimmer for the lanterns, a heavy press for the seal. All times from `Model/SolveTiming.swift` |
+| Solve | after 450ms each row of crowns bounces and turns gold with a star burst (70ms stagger); then board pulses to 1.04, sheen sweeps, gold frame line fades in; 500ms later the royal road travels crown to crown (90ms a leg) with a kingdom ripple at each; walls and map spread from each crown as the road reaches it (60ms a cell); corner towers and curtain wall rise as the road ends; ribbon unfurls with the time counting up; wax seal stamps 750ms later | one tap per row rising in strength, a swelling rumble on the finale, seven sparkle ticks, a light footstep per crown on the road, a knock per corner tower, a heavy press for the seal. All times from `Model/SolveTiming.swift` |
 | Undo | undo arrow bounces down | selection tick |
 | Pin, Return to pin, Re-pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
 | Hint | lightbulb bounces; clue text slides up and fades in, the old one slides out | none |
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |
 
-Reduce Motion: no shake or bounce; crowns and banner fade in. The road, ripples, lanterns, glints and ink drop are not drawn; the seal fades in rather than drops; Home cards fade without rising.
+Reduce Motion: no shake or bounce; crowns and banner fade in. The road, ripples, glints and ink drop are not drawn; the walls and map appear finished without drawing in; the seal fades in rather than drops; Home cards fade without rising.
 
 ## States
 | State | Rule |

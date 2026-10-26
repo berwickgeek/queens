@@ -142,63 +142,260 @@ struct KingdomRipple: View {
     }
 }
 
-// MARK: Lanterns
+// MARK: Lands
 
-/// Small gold lanterns drift up from every crown and out over the title, swaying as they rise.
-struct Lanterns: View {
+/// When the map and walls reach each cell on a solve: the road arrives at the kingdom's crown,
+/// then they spread out through the kingdom from there.
+struct Lands {
+    /// Seconds after solveTrigger, per cell.
+    let time: [Double]
+    /// Everything has been drawn by this time.
+    let end: Double
+
+    init(puzzle: Puzzle) {
+        let n = puzzle.size
+        var crownRow = [Int: Int]()
+        for r in 0..<n { crownRow[puzzle.regionOf[r * n + puzzle.solution[r]]] = r }
+        time = (0..<n * n).map { i in
+            let row = crownRow[puzzle.regionOf[i]] ?? 0
+            let d = hypot(Double(i % n - puzzle.solution[row]), Double(i / n - row))
+            return SolveTiming.roadReach(row, rows: n) + d * SolveTiming.landSpread
+        }
+        end = max(time.max() ?? 0, SolveTiming.outerWall(rows: n) + 0.12 + Double(n) * 0.02) + SolveTiming.landDraw + 0.3
+    }
+}
+
+private func hash(_ x: Double) -> Double {
+    let s = sin(x * 127.1 + 311.7) * 43758.5453
+    return s - floor(s)
+}
+
+private func backOut(_ x: Double) -> Double {
+    let c = 1.70158, y = x - 1
+    return 1 + (c + 1) * y * y * y + c * y * y
+}
+
+private func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
+
+// MARK: Map land
+
+/// Map symbols, drawn in a unit cell to be stroked.
+private enum Glyph {
+    case tree, pine, hills, peak, field, cottage, reeds, waves
+
+    var path: Path {
+        var p = Path()
+        switch self {
+        case .tree:
+            p.addEllipse(in: CGRect(x: 0.32, y: 0.24, width: 0.36, height: 0.34))
+            p.move(to: pt(0.5, 0.58)); p.addLine(to: pt(0.5, 0.78))
+        case .pine:
+            p.move(to: pt(0.5, 0.2)); p.addLine(to: pt(0.68, 0.66)); p.addLine(to: pt(0.32, 0.66)); p.closeSubpath()
+            p.move(to: pt(0.5, 0.66)); p.addLine(to: pt(0.5, 0.8))
+        case .hills:
+            p.move(to: pt(0.16, 0.7)); p.addQuadCurve(to: pt(0.56, 0.7), control: pt(0.36, 0.3))
+            p.move(to: pt(0.48, 0.6)); p.addQuadCurve(to: pt(0.84, 0.7), control: pt(0.68, 0.36))
+        case .peak:
+            p.move(to: pt(0.18, 0.76)); p.addLine(to: pt(0.5, 0.22)); p.addLine(to: pt(0.82, 0.76))
+            p.move(to: pt(0.38, 0.42)); p.addLine(to: pt(0.44, 0.48)); p.addLine(to: pt(0.5, 0.42))
+            p.addLine(to: pt(0.56, 0.48)); p.addLine(to: pt(0.62, 0.42))
+        case .field:
+            p.addRect(CGRect(x: 0.24, y: 0.3, width: 0.52, height: 0.42))
+            for k in 1...3 {
+                let y = 0.3 + 0.42 * CGFloat(k) / 4
+                p.move(to: pt(0.24, y)); p.addLine(to: pt(0.76, y))
+            }
+        case .cottage:
+            p.move(to: pt(0.3, 0.76)); p.addLine(to: pt(0.3, 0.5)); p.addLine(to: pt(0.5, 0.3))
+            p.addLine(to: pt(0.7, 0.5)); p.addLine(to: pt(0.7, 0.76)); p.closeSubpath()
+            p.move(to: pt(0.46, 0.76)); p.addLine(to: pt(0.46, 0.62)); p.addLine(to: pt(0.54, 0.62)); p.addLine(to: pt(0.54, 0.76))
+        case .reeds:
+            p.move(to: pt(0.5, 0.74)); p.addQuadCurve(to: pt(0.34, 0.4), control: pt(0.46, 0.5))
+            p.move(to: pt(0.5, 0.74)); p.addLine(to: pt(0.5, 0.3))
+            p.move(to: pt(0.5, 0.74)); p.addQuadCurve(to: pt(0.66, 0.4), control: pt(0.54, 0.5))
+            p.move(to: pt(0.28, 0.78)); p.addLine(to: pt(0.72, 0.78))
+        case .waves:
+            for y: CGFloat in [0.42, 0.6] {
+                p.move(to: pt(0.22, y))
+                p.addQuadCurve(to: pt(0.5, y), control: pt(0.36, y - 0.1))
+                p.addQuadCurve(to: pt(0.78, y), control: pt(0.64, y + 0.1))
+            }
+        }
+        return p
+    }
+
+    /// One land per kingdom: forest, highland, farmland, marsh. Repeats weight the mix.
+    static let terrains: [[Glyph]] = [
+        [.tree, .tree, .pine, .pine, .pine],
+        [.peak, .peak, .hills, .hills, .pine],
+        [.field, .field, .field, .cottage, .tree],
+        [.reeds, .reeds, .waves, .waves, .tree],
+    ]
+}
+
+/// A squat tower with three merlons for a crown to sit on.
+private let keepPath: Path = {
+    var p = Path()
+    p.move(to: pt(0.28, 0.92))
+    for (x, y) in [(0.28, 0.63), (0.36, 0.63), (0.36, 0.69), (0.46, 0.69), (0.46, 0.63), (0.54, 0.63),
+                   (0.54, 0.69), (0.64, 0.69), (0.64, 0.63), (0.72, 0.63), (0.72, 0.92)] as [(CGFloat, CGFloat)] {
+        p.addLine(to: pt(x, y))
+    }
+    p.closeSubpath()
+    return p
+}()
+
+/// On a solved board the cartographer finishes the map: every cell without a crown is drawn in as
+/// land, one kind per kingdom, and each crown gets a keep. Spreads out from each crown as the road
+/// reaches it; the crosses fade as the land replaces them.
+struct MapLand: View {
     let puzzle: Puzzle
     let trigger: Int
+    let shown: Bool
+    let animate: Bool
     let inset: CGFloat
-    let side: CGFloat
-
-    /// Room above the board the lanterns can rise into.
-    private var headroom: CGFloat { side * 0.4 }
 
     var body: some View {
         let n = puzzle.size
-        let cell = (side - inset * 2) / CGFloat(n)
+        let lands = Lands(puzzle: puzzle)
+        let crowns = puzzle.solutionCells
+        let seed = puzzle.solution[0]
         Color.clear
-            .keyframeAnimator(initialValue: 1.0, trigger: trigger) { _, p in
-                Canvas { ctx, _ in
-                    guard p < 1 else { return }
-                    for row in 0..<n {
-                        let c = crownCentre(puzzle, row: row, inset: inset, cell: cell)
-                        for k in 0..<3 {
-                            let seed = Double(row * 3 + k)
-                            let start = hash(seed) * 0.35
-                            let q = min(max((p - start) / 0.6, 0), 1)
-                            guard q > 0 && q < 1 else { continue }
-                            let rise = cell * 1.6 + (side * 0.25 + headroom * 0.6) * hash(seed + 7)
-                            let x = c.x + sin(q * .pi * 2.2 + seed) * cell * 0.22 + (hash(seed + 3) - 0.5) * cell * 1.4 * q
-                            let y = c.y + headroom - rise * easeOut(q)
-                            let r = cell * (0.07 + 0.04 * hash(seed + 11))
-                            let alpha = sin(.pi * q)
-                            let halo = CGRect(x: x - r * 3, y: y - r * 3, width: r * 6, height: r * 6)
-                            ctx.fill(Path(ellipseIn: halo), with: .radialGradient(
-                                Gradient(colors: [Theme.gold.opacity(0.45 * alpha), Theme.gold.opacity(0)]),
-                                center: CGPoint(x: x, y: y), startRadius: 0, endRadius: r * 3))
-                            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(Theme.gold.opacity(alpha)))
-                            ctx.fill(Path(ellipseIn: CGRect(x: x - r * 0.4, y: y - r * 0.4, width: r * 0.8, height: r * 0.8)), with: .color(Theme.paper.opacity(alpha)))
+            .keyframeAnimator(initialValue: lands.end, trigger: trigger) { _, t in
+                Canvas { ctx, size in
+                    guard shown else { return }
+                    let cell = (min(size.width, size.height) - inset * 2) / CGFloat(n)
+                    let line = max(1, cell * 0.035)
+                    for i in 0..<n * n {
+                        let q = animate ? min(max((t - lands.time[i]) / SolveTiming.landDraw, 0), 1) : 1
+                        guard q > 0 else { continue }
+                        let origin = pt(inset + CGFloat(i % n) * cell, inset + CGFloat(i / n) * cell)
+                        if crowns.contains(i) {
+                            let keep = keepPath.applying(CGAffineTransform(translationX: origin.x, y: origin.y).scaledBy(x: cell, y: cell))
+                            ctx.fill(keep, with: .color(Theme.paper.opacity(q)))
+                            ctx.stroke(keep.trimmedPath(from: 0, to: q), with: .color(Theme.ink.opacity(0.8)), style: StrokeStyle(lineWidth: line * 1.3, lineJoin: .round))
+                            continue
                         }
+                        let s = Double(i) + Double(seed) * 31
+                        let terrain = Glyph.terrains[(puzzle.regionOf[i] + seed) % Glyph.terrains.count]
+                        let glyph = terrain[Int(hash(s) * Double(terrain.count)) % terrain.count]
+                        let scale = cell * (0.78 + 0.17 * hash(s + 5))
+                        let flip: CGFloat = hash(s + 9) < 0.5 ? -1 : 1
+                        let shift = pt((hash(s + 2) - 0.5) * 0.12 * cell, (hash(s + 4) - 0.5) * 0.12 * cell)
+                        let place = CGAffineTransform(translationX: origin.x + cell / 2 + shift.x, y: origin.y + cell / 2 + shift.y)
+                            .scaledBy(x: scale * flip, y: scale)
+                            .translatedBy(x: -0.5, y: -0.5)
+                        ctx.stroke(glyph.path.applying(place).trimmedPath(from: 0, to: q), with: .color(Theme.ink.opacity(0.5)),
+                                   style: StrokeStyle(lineWidth: line, lineCap: .round, lineJoin: .round))
                     }
                 }
             } keyframes: { _ in
-                LinearKeyframe(1.0, duration: SolveTiming.lanterns(rows: n))
                 MoveKeyframe(0.0)
-                LinearKeyframe(1.0, duration: 3.4)
+                LinearKeyframe(lands.end, duration: lands.end)
             }
-            .frame(width: side, height: side + headroom)
-            // Lay out as the board's square and overflow upward, so the board frame keeps its size.
-            .frame(width: side, height: side, alignment: .bottom)
+            .allowsHitTesting(false)
+    }
+}
+
+// MARK: Battlements
+
+/// On a solved board the borders between kingdoms become castle walls. Battlements rise along each
+/// border from the crown that reaches it first, facing away from that crown, and the frame becomes
+/// a curtain wall with a tower at each corner. Drawn inside the ink layer so it wobbles with the ink.
+struct Battlements: View {
+    let puzzle: Puzzle
+    let trigger: Int
+    let shown: Bool
+    let animate: Bool
+    let inset: CGFloat
+
+    private struct Tooth {
+        let at: CGPoint
+        let out: CGVector
+        let time: Double
+    }
+
+    var body: some View {
+        let lands = Lands(puzzle: puzzle)
+        Color.clear
+            .keyframeAnimator(initialValue: lands.end, trigger: trigger) { _, t in
+                Canvas { ctx, size in
+                    guard shown else { return }
+                    let n = puzzle.size
+                    let cell = (min(size.width, size.height) - inset * 2) / CGFloat(n)
+                    let s = min(max(cell * 0.16, 4), 8)
+                    let tower = s * 1.5
+                    let wall = SolveTiming.outerWall(rows: n)
+                    func grow(_ start: Double, over d: Double) -> Double {
+                        animate ? backOut(min(max((t - start) / d, 0), 1)) : 1
+                    }
+                    for tooth in teeth(lands: lands, cell: cell, s: s, tower: tower) {
+                        let g = grow(tooth.time, over: 0.18)
+                        guard g > 0 else { continue }
+                        let d = s * g
+                        let b = pt(tooth.at.x + tooth.out.dx * d, tooth.at.y + tooth.out.dy * d)
+                        let wide = tooth.out.dx == 0
+                        let rect = CGRect(x: min(tooth.at.x, b.x) - (wide ? s / 2 : 0), y: min(tooth.at.y, b.y) - (wide ? 0 : s / 2),
+                                          width: abs(b.x - tooth.at.x) + (wide ? s : 0), height: abs(b.y - tooth.at.y) + (wide ? 0 : s))
+                        ctx.fill(Path(roundedRect: rect, cornerRadius: 0.8), with: .color(Theme.ink))
+                    }
+                    let corners = [pt(inset, inset), pt(size.width - inset, inset), pt(size.width - inset, size.height - inset), pt(inset, size.height - inset)]
+                    for (k, c) in corners.enumerated() {
+                        let r = tower * grow(wall + Double(k) * 0.05, over: 0.25)
+                        guard r > 0 else { continue }
+                        let centre = pt(c.x + (c.x < size.width / 2 ? 1 : -1) * tower * 0.8, c.y + (c.y < size.height / 2 ? 1 : -1) * tower * 0.8)
+                        let ring = Path(ellipseIn: CGRect(x: centre.x - r, y: centre.y - r, width: r * 2, height: r * 2))
+                        ctx.fill(ring, with: .color(Theme.paper))
+                        ctx.stroke(ring, with: .color(Theme.ink), lineWidth: 2)
+                        let top = Path(ellipseIn: CGRect(x: centre.x - r * 0.6, y: centre.y - r * 0.6, width: r * 1.2, height: r * 1.2))
+                        ctx.stroke(top, with: .color(Theme.ink), style: StrokeStyle(lineWidth: s * 0.5, dash: [s * 0.45, s * 0.4]))
+                    }
+                }
+            } keyframes: { _ in
+                MoveKeyframe(0.0)
+                LinearKeyframe(lands.end, duration: lands.end)
+            }
             .allowsHitTesting(false)
     }
 
-    private func hash(_ x: Double) -> Double {
-        let s = sin(x * 127.1 + 311.7) * 43758.5453
-        return s - floor(s)
+    private func teeth(lands: Lands, cell: CGFloat, s: CGFloat, tower: CGFloat) -> [Tooth] {
+        let n = puzzle.size
+        let count = max(2, Int(cell / (s * 2)))
+        func at(_ c: CGFloat, _ r: CGFloat) -> CGPoint { pt(inset + c * cell, inset + r * cell) }
+        func along(_ k: Int) -> CGFloat { (CGFloat(k) + 0.5) / CGFloat(count) }
+        var out: [Tooth] = []
+        for r in 0..<n {
+            for c in 0..<n {
+                let i = r * n + c, g = puzzle.regionOf[i]
+                for (j, vertical) in [(i + 1, true), (i + n, false)] {
+                    guard vertical ? c + 1 < n : r + 1 < n, puzzle.regionOf[j] != g else { continue }
+                    let sign: CGFloat = lands.time[i] <= lands.time[j] ? 1 : -1
+                    let start = min(lands.time[i], lands.time[j])
+                    for k in 0..<count {
+                        out.append(Tooth(
+                            at: vertical ? at(CGFloat(c + 1), CGFloat(r) + along(k)) : at(CGFloat(c) + along(k), CGFloat(r + 1)),
+                            out: vertical ? CGVector(dx: sign, dy: 0) : CGVector(dx: 0, dy: sign),
+                            time: start + Double(k) * 0.03))
+                    }
+                }
+            }
+        }
+        // The curtain wall: teeth face inward along the frame, spreading out from the towers.
+        let wall = SolveTiming.outerWall(rows: n) + 0.12
+        for j in 0..<n {
+            for k in 0..<count {
+                let f = CGFloat(j) + along(k)
+                let fromCorner = min(f, CGFloat(n) - f)
+                guard fromCorner * cell > tower * 1.9 else { continue }
+                let time = wall + Double(fromCorner) * 0.04
+                out.append(Tooth(at: at(f, 0), out: CGVector(dx: 0, dy: 1), time: time))
+                out.append(Tooth(at: at(f, CGFloat(n)), out: CGVector(dx: 0, dy: -1), time: time))
+                out.append(Tooth(at: at(0, f), out: CGVector(dx: 1, dy: 0), time: time))
+                out.append(Tooth(at: at(CGFloat(n), f), out: CGVector(dx: -1, dy: 0), time: time))
+            }
+        }
+        return out
     }
-
-    private func easeOut(_ q: Double) -> Double { 1 - (1 - q) * (1 - q) }
 }
 
 // MARK: Glints
