@@ -55,8 +55,8 @@ struct BoardView: View {
                         )
                         .id(game.solveTrigger)
                     }
-                    Lanterns(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
                 }
+                Inhabitants(puzzle: game.puzzle, trigger: game.solveTrigger, shown: game.gilded, animate: !reduceMotion, inset: inset, side: side)
             }
             .frame(width: side, height: side)
             .keyframeAnimator(initialValue: 1.0, trigger: game.solveTrigger) { view, scale in
@@ -90,7 +90,8 @@ struct BoardView: View {
                 solveTrigger: game.solveTrigger,
                 gilded: game.gilded,
                 bounceDelay: Double(i / game.n) * SolveTiming.rowStagger,
-                reduceMotion: reduceMotion
+                reduceMotion: reduceMotion,
+                crossFade: reduceMotion ? 0 : SolveTiming.critters(rows: game.n)
             )
             .frame(width: cell, height: cell)
             .offset(x: inset + CGFloat(i % game.n) * cell, y: inset + CGFloat(i / game.n) * cell)
@@ -254,6 +255,8 @@ private struct MarkView: View {
     let gilded: Bool
     let bounceDelay: Double
     let reduceMotion: Bool
+    /// Crosses clear off a solved board as the kingdom comes alive.
+    let crossFade: Double
 
     var body: some View {
         ZStack {
@@ -265,6 +268,8 @@ private struct MarkView: View {
                     .font(.serif(cell * 0.5))
                     .foregroundStyle(Theme.muted)
                     .offset(y: -cell * 0.03)
+                    .opacity(gilded ? 0 : 1)
+                    .animation(gilded ? .easeOut(duration: 0.25).delay(crossFade) : nil, value: gilded)
             case .queen:
                 if !reduceMotion {
                     SparkleBurst(trigger: solveTrigger, delay: bounceDelay + SolveTiming.peak - 0.04, cell: cell)

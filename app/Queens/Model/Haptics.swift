@@ -50,8 +50,8 @@ final class Haptics {
     }
 
     /// Follows the board: one rising tap per row as its crown bounces, a big thump and rumble when
-    /// the board pulses, a sparkle tail under the sheen, footsteps along the royal road, a shimmer
-    /// as the lanterns rise, then a press as the wax seal stamps the ribbon.
+    /// the board pulses, a sparkle tail under the sheen, footsteps along the royal road, the sheep's
+    /// hops and the dragon landing, then a press as the wax seal stamps the ribbon.
     func solved(rows n: Int) {
         var events: [CHHapticEvent] = []
         for r in 0..<n {
@@ -68,7 +68,12 @@ final class Haptics {
         for r in 0..<n {
             events.append(transient(at: SolveTiming.roadReach(r, rows: n), intensity: 0.32, sharpness: 0.85))
         }
-        events.append(continuous(at: SolveTiming.lanterns(rows: n), duration: 0.5, intensity: 0.25, sharpness: 0.9))
+        // Three little hops from the sheep, then the dragon touches down.
+        let critters = SolveTiming.critters(rows: n)
+        for k in 1...3 {
+            events.append(transient(at: critters + SolveTiming.sheepSets + SolveTiming.sheepWalk * Double(k) / 3, intensity: 0.3, sharpness: 0.6))
+        }
+        events.append(transient(at: SolveTiming.dragonLands(rows: n), intensity: 0.75, sharpness: 0.25))
         // The seal presses down, then settles.
         let stamp = SolveTiming.stamp(rows: n)
         events.append(transient(at: stamp, intensity: 1.0, sharpness: 0.45))
