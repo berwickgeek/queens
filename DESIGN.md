@@ -101,7 +101,7 @@ Sentence case everywhere. Puzzle names are generated storybook names ("The Marsh
 4pt base: 4, 8, 16, 24, 32.
 
 ### Grid & Container
-Board fills the width minus 18pt each side, centred under the title. Controls are a row of three pill buttons (Undo, Clear, Hint) with the pin button centred under them, above the home indicator. On iPad (landscape only), Home and realm content is capped at a 640pt centred column, and the game screen puts the board on the left with the title, clue or ribbon, and controls in a 380pt column on the right.
+Board fills the width minus 18pt each side, centred under the title. Controls are a row of three pill buttons (Undo, Clear, Hint) with the pin button (or Return to pin and Re-pin side by side) centred under them, above the home indicator. On iPad (landscape only), Home and realm content is capped at a 640pt centred column, and the game screen puts the board on the left with the title, clue or ribbon, and controls in a 380pt column on the right.
 
 ### Whitespace Philosophy
 Paper shows around the board. No cards on the game screen.
@@ -136,7 +136,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 
 **Compass rose.** Beside the Home title: a dashed ring draws in and the needle swings, overshoots and settles.
 
-**Pin.** One save point per game. "Pin this board" saves the marks as they stand; the button then reads "Return to pin" (disabled until the board changes). Marks made since the pin are pencilled in at 45% strength (`Theme.pencilMark`), so a guess being tested is visible at a glance; a clashing crown stays full strength. Return to pin restores the pinned board and lifts the pin, so the next guess can be pinned again; Undo brings the abandoned guess back. Solving or Play again drops the pin. The pin is saved with the attempt and syncs with it.
+**Pin.** One save point per game. "Pin this board" saves the marks as they stand; the button then becomes two, "Return to pin" and "Re-pin" (both disabled until the board changes). Re-pin replaces the pin with the board as it stands, inking the pencilled marks, so a guess that held up becomes the new save point. Marks made since the pin are pencilled in at 45% strength (`Theme.pencilMark`), so a guess being tested is visible at a glance; a clashing crown stays full strength. Return to pin restores the pinned board and lifts the pin, so the next guess can be pinned again; Undo brings the abandoned guess back. Solving or Play again drops the pin. The pin is saved with the attempt and syncs with it.
 
 **Crown tally.** Under the puzzle name on the game screen: one small crown per kingdom, drawn as a pencil outline and inked with a spring as each crown is placed (gold once the board is solved), then the timer and difficulty dots. VoiceOver reads it as "3 of 7 crowned".
 
@@ -162,7 +162,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Clash | clashing crowns turn red and shake 3 times over 300ms | two sharp knocks then a gritty buzz |
 | Solve | after 450ms each row of crowns bounces and turns gold with a star burst (70ms stagger); then board pulses to 1.04, sheen sweeps, gold frame line fades in; 500ms later the royal road travels crown to crown (90ms a leg) with a kingdom ripple at each; lanterns rise for 3.4s; ribbon unfurls with the time counting up; wax seal stamps 750ms later | one tap per row rising in strength, a swelling rumble on the finale, seven sparkle ticks, a light footstep per crown on the road, a shimmer for the lanterns, a heavy press for the seal. All times from `Model/SolveTiming.swift` |
 | Undo | undo arrow bounces down | selection tick |
-| Pin, Return to pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
+| Pin, Return to pin, Re-pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
 | Hint | lightbulb bounces; clue text slides up and fades in, the old one slides out | none |
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |
@@ -174,7 +174,7 @@ Reduce Motion: no shake or bounce; crowns and banner fade in. The road, ripples,
 |---|---|
 | Hover | Not applicable (touch only) |
 | Focus | System focus for VoiceOver; each cell labelled "Row 3, column F, Marsh kingdom, queen" |
-| Disabled | Undo disabled at 40% opacity when there is nothing to undo; Pin when the board is blank; Return to pin until the board differs from the pin |
+| Disabled | Undo disabled at 40% opacity when there is nothing to undo; Pin when the board is blank; Return to pin and Re-pin until the board differs from the pin |
 | Loading | Puzzles load from the bundle at launch, under 100ms; no spinner |
 | Empty | Never empty: every realm ships with 120 puzzles |
 | Error | Clashing queens shown red with shake and haptic; no blocking dialogs |

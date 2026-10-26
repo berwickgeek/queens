@@ -7,6 +7,7 @@ struct PillButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .fixedSize()
             .font(.labelMd)
             .foregroundStyle(prominent ? Theme.paper : Theme.ink)
             .padding(.horizontal, 18)
