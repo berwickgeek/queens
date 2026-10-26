@@ -2,3 +2,4 @@ app/*.xcodeproj/
 app/build/
 __pycache__/
 .DS_Store
+CLAUDE.local.md
