@@ -240,9 +240,9 @@ final class GameModel {
         persist()
     }
 
-    /// Saves the board as it stands, to come back to with `returnToPin`.
+    /// Saves the board as it stands, to come back to with `returnToPin`. Re-pinning replaces the old pin.
     func setPin() {
-        guard !complete, pin == nil, !isBlank else { return }
+        guard !complete, pin != marks, !isBlank else { return }
         pin = marks
         Haptics.shared.undo()
         persist()

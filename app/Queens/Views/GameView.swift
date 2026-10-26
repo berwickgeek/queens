@@ -162,7 +162,7 @@ struct GameView: View {
         }
     }
 
-    /// Pin saves the board; once pinned, Return puts it back and lifts the pin.
+    /// Pin saves the board; once pinned, Return puts it back and lifts the pin, and Re-pin moves the pin here.
     @ViewBuilder
     private var pinButton: some View {
         if game.pin == nil {
@@ -172,11 +172,18 @@ struct GameView: View {
             }
             .disabled(game.isBlank)
         } else {
-            Button { game.returnToPin(); pinTick += 1 } label: {
-                Label("Return to pin", systemImage: "mappin.and.ellipse")
-                    .symbolEffect(.bounce.down, value: pinTick)
+            HStack(spacing: 12) {
+                Button { game.returnToPin(); pinTick += 1 } label: {
+                    Label("Return to pin", systemImage: "mappin.and.ellipse")
+                        .symbolEffect(.bounce.down, value: pinTick)
+                }
+                .disabled(!game.canReturn)
+                Button { game.setPin(); pinTick += 1 } label: {
+                    Label("Re-pin", systemImage: "mappin")
+                        .symbolEffect(.bounce.down, value: pinTick)
+                }
+                .disabled(!game.canReturn || game.isBlank)
             }
-            .disabled(!game.canReturn)
         }
     }
 }
