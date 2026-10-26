@@ -7,6 +7,7 @@ struct PillButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .fixedSize()
             .font(.labelMd)
             .foregroundStyle(prominent ? Theme.paper : Theme.ink)
             .padding(.horizontal, 18)
@@ -358,6 +359,7 @@ struct CompassRose: View {
 struct PressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .fixedSize()
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
