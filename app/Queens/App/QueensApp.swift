@@ -83,6 +83,12 @@ struct RootView: View {
                 router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
                 return
             }
+            // Launch with `-openRealm 7` to go straight to a realm's puzzle list.
+            let realm = UserDefaults.standard.integer(forKey: "openRealm")
+            if realm > 0 {
+                router.path = [.realm(realm)]
+                return
+            }
             #endif
             // Reopen the puzzle that was left unfinished.
             if let puzzle = store.resumable {
