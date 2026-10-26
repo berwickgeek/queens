@@ -49,6 +49,7 @@ struct QueensApp: App {
 struct RootView: View {
     @Environment(ProgressStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(\.scenePhase) private var scenePhase
     @State private var restored = false
 
     var body: some View {
@@ -68,9 +69,21 @@ struct RootView: View {
                 }
         }
         .tint(Theme.ink)
+        .onChange(of: scenePhase) { _, phase in
+            // The game persists on .inactive, so by .background its last move is queued.
+            if phase == .background { store.flushCloud() }
+            if phase == .active { store.refreshFromCloud() }
+        }
         .onAppear {
             guard !restored else { return }
             restored = true
+            #if DEBUG
+            // Launch with `-openPuzzle 8-001` to go straight to a puzzle.
+            if let id = UserDefaults.standard.string(forKey: "openPuzzle"), let puzzle = PuzzleLibrary.shared.byId[id] {
+                router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
+                return
+            }
+            #endif
             // Reopen the puzzle that was left unfinished.
             if let puzzle = store.resumable {
                 router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]

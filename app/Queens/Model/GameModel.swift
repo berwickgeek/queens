@@ -23,6 +23,9 @@ final class GameModel {
     /// Bumped to replay the clash shake and the solve bounce.
     private(set) var clashTrigger = 0
     private(set) var solveTrigger = 0
+    /// The crown most recently placed without a clash, and a bump for its ink drop.
+    private(set) var lastPlaced = 0
+    private(set) var placeTrigger = 0
     /// Crowns turn gold once the solve celebration starts (and stay gold on a finished board).
     private(set) var gilded: Bool
 
@@ -165,10 +168,10 @@ final class GameModel {
         if clashes.contains(cell) {
             Haptics.shared.clash()
             withAnimation(.linear(duration: 0.36)) { clashTrigger += 1 }
-        } else if queenCount == n && clashes.isEmpty {
-            solve()
         } else {
-            Haptics.shared.queen()
+            lastPlaced = cell
+            placeTrigger += 1
+            if queenCount == n && clashes.isEmpty { solve() } else { Haptics.shared.queen() }
         }
     }
 
@@ -194,6 +197,19 @@ final class GameModel {
     }
 
     // MARK: Commands
+
+    #if DEBUG
+    /// Plays the solution in a crown at a time, for recording the celebration (launch with `-autosolve YES`).
+    func debugSolve() {
+        Task { @MainActor in
+            for row in 0..<n {
+                try? await Task.sleep(for: .milliseconds(350))
+                let cell = row * n + puzzle.solution[row]
+                while marks[cell] != .queen { tap(cell) }
+            }
+        }
+    }
+    #endif
 
     func undo() {
         guard !complete, let last = undoStack.popLast() else { return }

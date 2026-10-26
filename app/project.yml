@@ -14,6 +14,10 @@ targets:
     platform: iOS
     sources:
       - path: Queens
+    entitlements:
+      path: Queens/Queens.entitlements
+      properties:
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
     info:
       path: Queens/Info.plist
       properties:
@@ -29,13 +33,17 @@ targets:
           - NunitoSans-ExtraBold.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiresFullScreen: true
         UIUserInterfaceStyle: Light
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.jaym.queens
         CODE_SIGN_STYLE: Automatic
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

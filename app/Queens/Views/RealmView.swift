@@ -15,11 +15,13 @@ struct RealmView: View {
                         NavigationLink(value: Route.puzzle(puzzle.id)) {
                             PuzzleTile(puzzle: puzzle, record: store.records[puzzle.id])
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressableStyle())
                         .id(puzzle.id)
                     }
                 }
                 .padding(20)
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity)
             }
             .onAppear {
                 if let first = store.firstUnsolved(size: size) {
@@ -27,7 +29,7 @@ struct RealmView: View {
                 }
             }
         }
-        .background(Theme.paper)
+        .background(PaperBackground())
         .navigationTitle(Naming.realm(size).name)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -48,6 +50,18 @@ private struct PuzzleTile: View {
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(inProgress ? Theme.ink : Theme.border, lineWidth: inProgress ? 2 : 1)
             )
+            .overlay(alignment: .topTrailing) {
+                // A small gold crown marks a puzzle that has been crowned.
+                if solved {
+                    ZStack {
+                        Crown().fill(Theme.gold)
+                        Crown().stroke(Theme.goldDeep, lineWidth: 0.7)
+                    }
+                    .frame(width: 15, height: 15)
+                    .rotationEffect(.degrees(12))
+                    .padding(6)
+                }
+            }
             .overlay {
                 VStack(spacing: 6) {
                     Text("\(puzzle.number)")

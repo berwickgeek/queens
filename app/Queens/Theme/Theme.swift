@@ -14,6 +14,9 @@ enum Theme {
     /// Gilding for a solved board: crowns, sparkles, the stamp on the ribbon.
     static let gold = Color(hex: 0xd49a2a)
     static let goldDeep = Color(hex: 0x8a5a12)
+    /// Sealing wax for the stamp on the solved ribbon.
+    static let wax = Color(hex: 0x9c2f3c)
+    static let waxDeep = Color(hex: 0x6e1f2a)
 
     static let regions: [Color] = [
         0xa8cbe0, 0xf2c58a, 0xb9d9a3, 0xe9a9a1, 0xcbb8de, 0xf1e28f,
