@@ -84,6 +84,7 @@ struct BoardView: View {
             MarkView(
                 mark: game.marks[i],
                 clashing: game.clashes.contains(i),
+                pencilled: game.pencilled(i),
                 cell: cell,
                 clashTrigger: game.clashTrigger,
                 solveTrigger: game.solveTrigger,
@@ -246,6 +247,7 @@ private struct InkLayer: View {
 private struct MarkView: View {
     let mark: Mark
     let clashing: Bool
+    let pencilled: Bool
     let cell: CGFloat
     let clashTrigger: Int
     let solveTrigger: Int
@@ -289,6 +291,8 @@ private struct MarkView: View {
                     .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
             }
         }
+        // Marks made since the pin are pencilled in; a clash still shows at full strength.
+        .opacity(pencilled && !clashing ? Theme.pencilMark : 1)
         .frame(width: cell, height: cell)
     }
 }

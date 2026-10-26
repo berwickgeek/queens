@@ -8,6 +8,7 @@ struct GameView: View {
     @Environment(\.verticalSizeClass) private var vSize
     @State private var undoTick = 0
     @State private var hintTick = 0
+    @State private var pinTick = 0
 
     init(puzzle: Puzzle, store: ProgressStore) {
         _game = State(initialValue: GameModel(puzzle: puzzle, store: store))
@@ -98,8 +99,9 @@ struct GameView: View {
                 .font(.headlineMd)
                 .foregroundStyle(Theme.ink)
             HStack(spacing: 10) {
+                CrownTally(placed: game.queenCount, total: game.n, gilded: game.gilded)
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    Text("\(game.queenCount) of \(game.n) crowned · \(formatTime(game.elapsed(at: ctx.date)))")
+                    Text(formatTime(game.elapsed(at: ctx.date)))
                         .font(.timer)
                         .foregroundStyle(Theme.muted)
                         .contentTransition(.numericText())
@@ -115,34 +117,66 @@ struct GameView: View {
         if game.complete {
             // On a fresh solve the buttons arrive with the ribbon, not over the coronation.
             let fresh = !game.gilded || game.solveTrigger > 0
-            HStack(spacing: 12) {
-                Button("Play again") { game.playAgain() }
-                    .buttonStyle(PillButtonStyle())
-                if let next = PuzzleLibrary.shared.next(after: game.puzzle) {
-                    Button("Next puzzle") { router.replaceLast(with: .puzzle(next.id)) }
-                        .buttonStyle(PillButtonStyle(prominent: true))
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Button("Play again") { game.playAgain() }
+                        .buttonStyle(PillButtonStyle())
+                    if let next = PuzzleLibrary.shared.next(after: game.puzzle) {
+                        Button("Next puzzle") { router.replaceLast(with: .puzzle(next.id)) }
+                            .buttonStyle(PillButtonStyle(prominent: true))
+                    }
                 }
+                // Holds the pin row's height so the board does not move on solve.
+                pinButton
+                    .buttonStyle(PillButtonStyle())
+                    .labelStyle(.titleAndIcon)
+                    .hidden()
             }
             .transition(.opacity.animation(.easeOut(duration: 0.4).delay(fresh ? SolveTiming.entrance + SolveTiming.ribbon(rows: game.n) + 0.3 : 0)))
         } else {
-            HStack(spacing: 12) {
-                Button { game.undo(); undoTick += 1 } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
-                        .symbolEffect(.bounce.down, value: undoTick)
-                }
-                    .disabled(!game.canUndo)
-                Button { game.clear() } label: { Label("Clear", systemImage: "eraser") }
-                    .disabled(game.isBlank)
-                Button { game.hint(); hintTick += 1 } label: {
-                    Label(game.clueHasMore ? "More" : "Hint", systemImage: game.clueHasMore ? "lightbulb.fill" : "lightbulb")
-                        .symbolEffect(.bounce, value: hintTick)
-                }
+            VStack(spacing: 12) {
+                actions
+                pinButton
             }
             .buttonStyle(PillButtonStyle())
             .labelStyle(.titleAndIcon)
             .lineLimit(1)
             .fixedSize()
             .transition(.opacity)
+        }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 12) {
+            Button { game.undo(); undoTick += 1 } label: {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+                    .symbolEffect(.bounce.down, value: undoTick)
+            }
+                .disabled(!game.canUndo)
+            Button { game.clear() } label: { Label("Clear", systemImage: "eraser") }
+                .disabled(game.isBlank)
+            Button { game.hint(); hintTick += 1 } label: {
+                Label(game.clueHasMore ? "More" : "Hint", systemImage: game.clueHasMore ? "lightbulb.fill" : "lightbulb")
+                    .symbolEffect(.bounce, value: hintTick)
+            }
+        }
+    }
+
+    /// Pin saves the board; once pinned, Return puts it back and lifts the pin.
+    @ViewBuilder
+    private var pinButton: some View {
+        if game.pin == nil {
+            Button { game.setPin(); pinTick += 1 } label: {
+                Label("Pin this board", systemImage: "mappin")
+                    .symbolEffect(.bounce.down, value: pinTick)
+            }
+            .disabled(game.isBlank)
+        } else {
+            Button { game.returnToPin(); pinTick += 1 } label: {
+                Label("Return to pin", systemImage: "mappin.and.ellipse")
+                    .symbolEffect(.bounce.down, value: pinTick)
+            }
+            .disabled(!game.canReturn)
         }
     }
 }

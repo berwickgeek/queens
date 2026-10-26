@@ -28,6 +28,8 @@ final class GameModel {
     private(set) var placeTrigger = 0
     /// Crowns turn gold once the solve celebration starts (and stay gold on a finished board).
     private(set) var gilded: Bool
+    /// The board as it was when pinned, so a guess can be tested and abandoned. One pin per game.
+    private(set) var pin: [Mark]?
 
     private var undoStack: [[Mark]] = []
     private var accumulated: Double
@@ -51,6 +53,7 @@ final class GameModel {
         gilded = rec.complete
         hinted = rec.hinted
         bestTime = rec.bestTime
+        pin = rec.pin.map { $0.compactMap(Mark.init(rawValue:)) }.flatMap { $0.count == marks.count ? $0 : nil }
         clashes = computeClashes()
     }
 
@@ -59,6 +62,10 @@ final class GameModel {
     var queenCount: Int { marks.lazy.filter { $0 == .queen }.count }
     var canUndo: Bool { !undoStack.isEmpty && !complete }
     var isBlank: Bool { !marks.contains { $0 != .empty } }
+    var canReturn: Bool { pin.map { $0 != marks } ?? false }
+
+    /// A mark made since the pin, drawn in pencil until the guess is kept or abandoned.
+    func pencilled(_ i: Int) -> Bool { pin.map { $0[i] != marks[i] } ?? false }
 
     var clueStep: ClueStep? { clue.map { $0.steps[min(clueLevel, $0.steps.count - 1)] } }
     var clueHasMore: Bool { clue.map { clueLevel < $0.steps.count - 1 } ?? false }
@@ -180,6 +187,7 @@ final class GameModel {
         accumulated = time
         runningSince = nil
         complete = true
+        pin = nil
         undoStack.removeAll()
         if !hinted, bestTime.map({ time < $0 }) ?? true {
             newBest = bestTime != nil
@@ -232,8 +240,31 @@ final class GameModel {
         persist()
     }
 
+    /// Saves the board as it stands, to come back to with `returnToPin`.
+    func setPin() {
+        guard !complete, pin == nil, !isBlank else { return }
+        pin = marks
+        Haptics.shared.undo()
+        persist()
+    }
+
+    /// Puts the board back as it was when pinned and lifts the pin. Undo can bring the guess back.
+    func returnToPin() {
+        guard !complete, let saved = pin, canReturn else { return }
+        pushUndo()
+        withAnimation(.easeOut(duration: 0.25)) {
+            marks = saved
+            pin = nil
+            clashes = computeClashes()
+        }
+        refreshClue()
+        Haptics.shared.undo()
+        persist()
+    }
+
     func playAgain() {
         clue = nil
+        pin = nil
         marks = Array(repeating: .empty, count: n * n)
         clashes = []
         undoStack.removeAll()
@@ -317,6 +348,7 @@ final class GameModel {
 
     private func persist() {
         let marks = String(self.marks.map(\.rawValue))
+        let pin = self.pin.map { String($0.map(\.rawValue)) }
         let elapsed = elapsed()
         store.update(puzzle.id) { r in
             r.marks = marks
@@ -324,6 +356,7 @@ final class GameModel {
             r.complete = complete
             r.hinted = hinted
             r.bestTime = bestTime
+            r.pin = pin
             if complete { r.solvedOnce = true }
         }
     }

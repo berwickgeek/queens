@@ -9,6 +9,8 @@ enum Theme {
     static let ink = Color(hex: 0x2a3446)
     static let muted = Color(hex: 0x5a6578)
     static let pencil = Color(hex: 0x2a3446).opacity(0.28)
+    /// Strength of marks made since the pin, which are pencilled rather than inked.
+    static let pencilMark = 0.45
     static let error = Color(hex: 0xb8322a)
     static let success = Color(hex: 0x2f7d4f)
     /// Gilding for a solved board: crowns, sparkles, the stamp on the ribbon.

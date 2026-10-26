@@ -19,6 +19,32 @@ struct PillButtonStyle: ButtonStyle {
     }
 }
 
+/// Crowns placed out of the kingdoms on the board: a pencil outline per kingdom, inked as crowns go down.
+struct CrownTally: View {
+    let placed: Int
+    let total: Int
+    var gilded = false
+    var size: CGFloat = 15
+
+    var body: some View {
+        HStack(spacing: size * 0.2) {
+            ForEach(0..<total, id: \.self) { k in
+                ZStack {
+                    Crown().stroke(Theme.pencil, lineWidth: 1)
+                    Crown().fill(gilded ? Theme.gold : Theme.ink)
+                        .scaleEffect(k < placed ? 1 : 0.4)
+                        .opacity(k < placed ? 1 : 0)
+                }
+                .frame(width: size, height: size)
+            }
+        }
+        .animation(.spring(duration: 0.4, bounce: 0.4), value: placed)
+        .animation(.easeOut(duration: 0.4), value: gilded)
+        .accessibilityElement()
+        .accessibilityLabel("\(placed) of \(total) crowned")
+    }
+}
+
 /// Difficulty as five small dots.
 struct TierDots: View {
     let tier: Int
