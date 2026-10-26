@@ -117,13 +117,20 @@ struct GameView: View {
         if game.complete {
             // On a fresh solve the buttons arrive with the ribbon, not over the coronation.
             let fresh = !game.gilded || game.solveTrigger > 0
-            HStack(spacing: 12) {
-                Button("Play again") { game.playAgain() }
-                    .buttonStyle(PillButtonStyle())
-                if let next = PuzzleLibrary.shared.next(after: game.puzzle) {
-                    Button("Next puzzle") { router.replaceLast(with: .puzzle(next.id)) }
-                        .buttonStyle(PillButtonStyle(prominent: true))
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Button("Play again") { game.playAgain() }
+                        .buttonStyle(PillButtonStyle())
+                    if let next = PuzzleLibrary.shared.next(after: game.puzzle) {
+                        Button("Next puzzle") { router.replaceLast(with: .puzzle(next.id)) }
+                            .buttonStyle(PillButtonStyle(prominent: true))
+                    }
                 }
+                // Holds the pin row's height so the board does not move on solve.
+                pinButton
+                    .buttonStyle(PillButtonStyle())
+                    .labelStyle(.titleAndIcon)
+                    .hidden()
             }
             .transition(.opacity.animation(.easeOut(duration: 0.4).delay(fresh ? SolveTiming.entrance + SolveTiming.ribbon(rows: game.n) + 0.3 : 0)))
         } else {
