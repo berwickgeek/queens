@@ -11,11 +11,17 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Board | `Board/BoardView.swift` | Wash, pencil grid, ink borders, marks, in that z-order |
 | Celebration banner | `Views/Components.swift` SolvedBanner / Ribbon | Gold crown stamp on top |
 | Solve celebration | `Board/BoardView.swift` SparkleBurst, Sheen, InkLayer gilding | Every delay comes from `Model/SolveTiming.swift` so haptics and visuals land together |
-| Grid tile | `Views/RealmView.swift` PuzzleTile | |
+| Coronation (after gilding) | `Board/Coronation.swift` RoyalRoad, KingdomRipple, Lanterns, CrownGlints | Keep each layer always mounted and drive it with `keyframeAnimator(trigger:)`; a layer inserted with the new trigger value never animates |
+| Placement feedback | `Board/Coronation.swift` InkDrop | Driven by `GameModel.placeTrigger` / `lastPlaced` |
+| Screen background | `Views/Components.swift` PaperBackground | Every screen; `contours:` 0.05 on the game screen so the board stays loudest |
+| Pressable card or tile | `Views/Components.swift` PressableStyle | Use for NavigationLinks that look like cards |
+| Wax seal | `Views/Components.swift` WaxSeal / StampedSeal | `wax` tokens only here |
+| Grid tile | `Views/RealmView.swift` PuzzleTile | Small gold crown in the corner once solved |
 | Clue (stepped hint) | `Model/HintEngine.swift`, `Board/BoardView.swift` Spotlight / GhostCross | Same rules as `tools/generate.py`; `tools/hintcheck/run.sh` (on the Mac) must report 0 failures after any change |
 | Haptic per action | `Model/Haptics.swift` | One haptic per user action, same frame as the visual |
 
 ## New patterns log
 
 - Solve celebration (gold gilding, star bursts, sheen, stamp) with `SolveTiming` as the shared clock, because Jay asked for a bigger reward on solve.
+- Coronation (royal road, kingdom ripple, lanterns, glints), wax seal with count-up, paper background with contours, compass rose, ink drop on placement, pressable cards, because Jay asked for a more elaborate reward on completion and more polish across the app.
 - Stepped clues with a spotlight, because Jay wanted hints that teach (which rows or colours to study) rather than naming a crown cell.

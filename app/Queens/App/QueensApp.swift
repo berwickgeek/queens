@@ -71,6 +71,13 @@ struct RootView: View {
         .onAppear {
             guard !restored else { return }
             restored = true
+            #if DEBUG
+            // Launch with `-openPuzzle 8-001` to go straight to a puzzle.
+            if let id = UserDefaults.standard.string(forKey: "openPuzzle"), let puzzle = PuzzleLibrary.shared.byId[id] {
+                router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
+                return
+            }
+            #endif
             // Reopen the puzzle that was left unfinished.
             if let puzzle = store.resumable {
                 router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]

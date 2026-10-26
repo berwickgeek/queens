@@ -17,6 +17,10 @@ struct BoardView: View {
                 WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, inset: inset, side: side)
                 PencilGrid(n: game.n, inset: inset)
                     .stroke(Theme.pencil, lineWidth: 1)
+                // Celebration layers stay mounted and draw nothing at rest, so a trigger bump always animates.
+                if !reduceMotion {
+                    KingdomRipple(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
+                }
                 if let step = game.clueStep, !step.focus.isEmpty {
                     Spotlight(n: game.n, inset: inset, focus: game.clueFocusCells)
                         .fill(Theme.paper.opacity(0.62))
@@ -33,10 +37,25 @@ struct BoardView: View {
                             .transition(.opacity)
                     }
                 }
+                if !reduceMotion {
+                    RoyalRoad(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, cell: cell)
+                }
+                if !reduceMotion {
+                    InkDrop(trigger: game.placeTrigger, cell: cell)
+                        .offset(x: inset + CGFloat(game.lastPlaced % game.n) * cell, y: inset + CGFloat(game.lastPlaced / game.n) * cell)
+                }
                 marks(cell: cell)
                 if !reduceMotion {
                     Sheen(trigger: game.solveTrigger, delay: SolveTiming.finale(rows: game.n) - 0.1, side: side)
                         .allowsHitTesting(false)
+                    if game.gilded {
+                        CrownGlints(
+                            puzzle: game.puzzle, inset: inset, side: side,
+                            delay: game.solveTrigger > 0 ? SolveTiming.stamp(rows: game.n) + 0.6 : 0.8
+                        )
+                        .id(game.solveTrigger)
+                    }
+                    Lanterns(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
                 }
             }
             .frame(width: side, height: side)

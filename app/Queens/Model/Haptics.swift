@@ -50,7 +50,8 @@ final class Haptics {
     }
 
     /// Follows the board: one rising tap per row as its crown bounces, a big thump and rumble when
-    /// the board pulses, a sparkle tail under the sheen, then a knock as the crown stamps the ribbon.
+    /// the board pulses, a sparkle tail under the sheen, footsteps along the royal road, a shimmer
+    /// as the lanterns rise, then a press as the wax seal stamps the ribbon.
     func solved(rows n: Int) {
         var events: [CHHapticEvent] = []
         for r in 0..<n {
@@ -63,7 +64,15 @@ final class Haptics {
         for k in 0..<7 {
             events.append(transient(at: f + 0.2 + Double(k) * 0.065, intensity: 0.6 - Float(k) * 0.06, sharpness: 1.0))
         }
-        events.append(transient(at: SolveTiming.stamp(rows: n), intensity: 0.95, sharpness: 0.55))
+        // A light footstep each time the royal road reaches a crown.
+        for r in 0..<n {
+            events.append(transient(at: SolveTiming.roadReach(r, rows: n), intensity: 0.32, sharpness: 0.85))
+        }
+        events.append(continuous(at: SolveTiming.lanterns(rows: n), duration: 0.5, intensity: 0.25, sharpness: 0.9))
+        // The seal presses down, then settles.
+        let stamp = SolveTiming.stamp(rows: n)
+        events.append(transient(at: stamp, intensity: 1.0, sharpness: 0.45))
+        events.append(continuous(at: stamp + 0.01, duration: 0.09, intensity: 0.6, sharpness: 0.15))
         // Let the rumble swell in and die away rather than switch off.
         let fade = CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [
             .init(relativeTime: f, value: 1.0),

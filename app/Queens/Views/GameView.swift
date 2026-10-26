@@ -4,6 +4,8 @@ struct GameView: View {
     @State private var game: GameModel
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @State private var undoTick = 0
+    @State private var hintTick = 0
 
     init(puzzle: Puzzle, store: ProgressStore) {
         _game = State(initialValue: GameModel(puzzle: puzzle, store: store))
@@ -22,8 +24,9 @@ struct GameView: View {
                     let fresh = !game.gilded || game.solveTrigger > 0
                     SolvedBanner(
                         time: game.elapsed(), newBest: game.newBest, hinted: game.hinted,
-                        unfurlDelay: fresh ? SolveTiming.entrance + SolveTiming.finale(rows: game.n) : 0.1,
-                        stampDelay: fresh ? SolveTiming.entrance + SolveTiming.stamp(rows: game.n) : 0.4
+                        unfurlDelay: fresh ? SolveTiming.entrance + SolveTiming.ribbon(rows: game.n) : 0.1,
+                        stampDelay: fresh ? SolveTiming.entrance + SolveTiming.stamp(rows: game.n) : 0.4,
+                        countUp: fresh
                     )
                 } else if let step = game.clueStep {
                     Text(step.text)
@@ -33,7 +36,7 @@ struct GameView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 24)
                         .id(step.text)
-                        .transition(.opacity)
+                        .transition(.asymmetric(insertion: .offset(y: 8).combined(with: .opacity), removal: .opacity))
                 } else {
                     Text(" ").font(.bodyMd)
                 }
@@ -44,12 +47,16 @@ struct GameView: View {
             Spacer(minLength: 0)
         }
         .padding(.top, 4)
-        .background(Theme.paper)
+        .background(PaperBackground(contours: 0.05))
+        .animation(.easeOut(duration: 0.25), value: game.clueStep?.text)
         .navigationTitle(Naming.realm(game.n).name)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Haptics.shared.prepare()
             game.resume()
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "autosolve") { game.debugSolve() }
+            #endif
         }
         .onDisappear { game.pause() }
         .onChange(of: scenePhase) { _, phase in
@@ -78,6 +85,8 @@ struct GameView: View {
     @ViewBuilder
     private var controls: some View {
         if game.complete {
+            // On a fresh solve the buttons arrive with the ribbon, not over the coronation.
+            let fresh = !game.gilded || game.solveTrigger > 0
             HStack(spacing: 12) {
                 Button("Play again") { game.playAgain() }
                     .buttonStyle(PillButtonStyle())
@@ -86,15 +95,19 @@ struct GameView: View {
                         .buttonStyle(PillButtonStyle(prominent: true))
                 }
             }
-            .transition(.opacity)
+            .transition(.opacity.animation(.easeOut(duration: 0.4).delay(fresh ? SolveTiming.entrance + SolveTiming.ribbon(rows: game.n) + 0.3 : 0)))
         } else {
             HStack(spacing: 12) {
-                Button { game.undo() } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                Button { game.undo(); undoTick += 1 } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                        .symbolEffect(.bounce.down, value: undoTick)
+                }
                     .disabled(!game.canUndo)
                 Button { game.clear() } label: { Label("Clear", systemImage: "eraser") }
                     .disabled(game.isBlank)
-                Button { game.hint() } label: {
+                Button { game.hint(); hintTick += 1 } label: {
                     Label(game.clueHasMore ? "More" : "Hint", systemImage: game.clueHasMore ? "lightbulb.fill" : "lightbulb")
+                        .symbolEffect(.bounce, value: hintTick)
                 }
             }
             .buttonStyle(PillButtonStyle())
