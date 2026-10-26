@@ -4,6 +4,8 @@ import Observation
 struct PuzzleRecord: Codable {
     /// Current attempt, one character per cell: "." empty, "x" cross, "q" queen.
     var marks = ""
+    /// The board saved by Pin, in the same form as `marks`.
+    var pin: String?
     var elapsed: Double = 0
     var complete = false
     var hinted = false
