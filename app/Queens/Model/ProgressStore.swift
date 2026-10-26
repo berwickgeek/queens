@@ -52,6 +52,8 @@ final class ProgressStore {
 
     private let cloud = NSUbiquitousKeyValueStore.default
     private static let cloudPrefix = "p."
+    private var pending: Set<String> = []
+    private var flushTask: Task<Void, Never>?
 
     init() {
         if let data = try? Data(contentsOf: url),
@@ -79,9 +81,35 @@ final class ProgressStore {
         cloud.data(forKey: Self.cloudPrefix + id).flatMap { try? JSONDecoder().decode(PuzzleRecord.self, from: $0) }
     }
 
-    private func pushCloud(_ id: String, _ r: PuzzleRecord) {
+    /// Writes on every move get throttled by iCloud, so moves are batched: a record is sent
+    /// 2s after its last change, or straight away when the app leaves the foreground.
+    private func pushCloud(_ id: String, _ r: PuzzleRecord, soon: Bool = false) {
+        if soon {
+            pending.insert(id)
+            flushTask?.cancel()
+            flushTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                self?.flushCloud()
+            }
+            return
+        }
         guard let data = try? JSONEncoder().encode(r) else { return }
         cloud.set(data, forKey: Self.cloudPrefix + id)
+    }
+
+    /// Send any batched records and ask iCloud to sync now.
+    func flushCloud() {
+        flushTask?.cancel()
+        for id in pending { pushCloud(id, record(id)) }
+        pending.removeAll()
+        cloud.synchronize()
+    }
+
+    /// On returning to the foreground, fetch what the other device has sent.
+    func refreshFromCloud() {
+        cloud.synchronize()
+        pullCloud(keys: nil)
     }
 
     /// Merge iCloud copies into local records. `keys` nil means every key.
@@ -115,7 +143,7 @@ final class ProgressStore {
         records[id] = r
         lastPuzzleId = id
         saveFile()
-        pushCloud(id, r)
+        pushCloud(id, r, soon: true)
     }
 
     func solvedCount(size: Int) -> Int {

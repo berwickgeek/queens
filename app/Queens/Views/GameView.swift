@@ -4,6 +4,8 @@ struct GameView: View {
     @State private var game: GameModel
     @Environment(Router.self) private var router
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var hSize
+    @Environment(\.verticalSizeClass) private var vSize
     @State private var undoTick = 0
     @State private var hintTick = 0
 
@@ -12,39 +14,33 @@ struct GameView: View {
     }
 
     var body: some View {
-        VStack(spacing: 14) {
-            header
-            Spacer(minLength: 4)
-            BoardView(game: game)
-                .padding(.horizontal, 12)
-            // The ribbon sits under the board so it never hides a crown.
-            Group {
-                if game.complete {
-                    // Just solved: wait for the board's finale. Reopened finished puzzle: show it straight away.
-                    let fresh = !game.gilded || game.solveTrigger > 0
-                    SolvedBanner(
-                        time: game.elapsed(), newBest: game.newBest, hinted: game.hinted,
-                        unfurlDelay: fresh ? SolveTiming.entrance + SolveTiming.ribbon(rows: game.n) : 0.1,
-                        stampDelay: fresh ? SolveTiming.entrance + SolveTiming.stamp(rows: game.n) : 0.4,
-                        countUp: fresh
-                    )
-                } else if let step = game.clueStep {
-                    Text(step.text)
-                        .font(.bodyMd)
-                        .foregroundStyle(Theme.ink)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 24)
-                        .id(step.text)
-                        .transition(.asymmetric(insertion: .offset(y: 8).combined(with: .opacity), removal: .opacity))
-                } else {
-                    Text(" ").font(.bodyMd)
+        Group {
+            if wide {
+                // iPad, landscape: board on the left, everything else in a column beside it.
+                HStack(spacing: 32) {
+                    BoardView(game: game)
+                        .padding(.vertical, 24)
+                    VStack(spacing: 14) {
+                        Spacer(minLength: 0)
+                        header
+                        outcome
+                        controls
+                        Spacer(minLength: 0)
+                    }
+                    .frame(width: 380)
+                }
+                .padding(.horizontal, 32)
+            } else {
+                VStack(spacing: 14) {
+                    header
+                    Spacer(minLength: 4)
+                    BoardView(game: game)
+                        .padding(.horizontal, 12)
+                    outcome
+                    controls
+                    Spacer(minLength: 0)
                 }
             }
-            .frame(minHeight: 52)
-            .padding(.top, 24)
-            controls
-            Spacer(minLength: 0)
         }
         .padding(.top, 4)
         .background(PaperBackground(contours: 0.05))
@@ -62,6 +58,38 @@ struct GameView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { game.resume() } else { game.pause() }
         }
+    }
+
+    private var wide: Bool { hSize == .regular && vSize == .regular }
+
+    /// Under the board: the ribbon once solved, otherwise the current clue.
+    /// The ribbon sits under the board so it never hides a crown.
+    private var outcome: some View {
+        Group {
+            if game.complete {
+                // Just solved: wait for the board's finale. Reopened finished puzzle: show it straight away.
+                let fresh = !game.gilded || game.solveTrigger > 0
+                SolvedBanner(
+                    time: game.elapsed(), newBest: game.newBest, hinted: game.hinted,
+                    unfurlDelay: fresh ? SolveTiming.entrance + SolveTiming.ribbon(rows: game.n) : 0.1,
+                    stampDelay: fresh ? SolveTiming.entrance + SolveTiming.stamp(rows: game.n) : 0.4,
+                    countUp: fresh
+                )
+            } else if let step = game.clueStep {
+                Text(step.text)
+                    .font(.bodyMd)
+                    .foregroundStyle(Theme.ink)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 24)
+                    .id(step.text)
+                    .transition(.asymmetric(insertion: .offset(y: 8).combined(with: .opacity), removal: .opacity))
+            } else {
+                Text(" ").font(.bodyMd)
+            }
+        }
+        .frame(minHeight: 52)
+        .padding(.top, 24)
     }
 
     private var header: some View {

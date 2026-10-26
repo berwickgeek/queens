@@ -49,6 +49,7 @@ struct QueensApp: App {
 struct RootView: View {
     @Environment(ProgressStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(\.scenePhase) private var scenePhase
     @State private var restored = false
 
     var body: some View {
@@ -68,6 +69,11 @@ struct RootView: View {
                 }
         }
         .tint(Theme.ink)
+        .onChange(of: scenePhase) { _, phase in
+            // The game persists on .inactive, so by .background its last move is queued.
+            if phase == .background { store.flushCloud() }
+            if phase == .active { store.refreshFromCloud() }
+        }
         .onAppear {
             guard !restored else { return }
             restored = true

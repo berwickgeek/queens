@@ -101,7 +101,7 @@ Sentence case everywhere. Puzzle names are generated storybook names ("The Marsh
 4pt base: 4, 8, 16, 24, 32.
 
 ### Grid & Container
-Board fills the width minus 18pt each side, centred under the title. Controls are a row of three pill buttons pinned above the home indicator. On iPad (portrait only), Home and realm content is capped at a 640pt centred column.
+Board fills the width minus 18pt each side, centred under the title. Controls are a row of three pill buttons pinned above the home indicator. On iPad (landscape only), Home and realm content is capped at a 640pt centred column, and the game screen puts the board on the left with the title, clue or ribbon, and controls in a 380pt column on the right.
 
 ### Whitespace Philosophy
 Paper shows around the board. No cards on the game screen.
