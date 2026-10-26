@@ -77,14 +77,26 @@ struct GameView: View {
                     countUp: fresh
                 )
             } else if let step = game.clueStep {
-                Text(step.text)
-                    .font(.bodyMd)
-                    .foregroundStyle(Theme.ink)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 24)
-                    .id(step.text)
-                    .transition(.asymmetric(insertion: .offset(y: 8).combined(with: .opacity), removal: .opacity))
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(step.text)
+                        .font(.bodyMd)
+                        .foregroundStyle(Theme.ink)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button { game.dismissHint() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.bodyMd)
+                            .foregroundStyle(Theme.muted)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .padding(.vertical, -12)
+                    .accessibilityLabel("Hide hint")
+                }
+                .padding(.leading, 24)
+                .padding(.trailing, 8)
+                .id(step.text)
+                .transition(.asymmetric(insertion: .offset(y: 8).combined(with: .opacity), removal: .opacity))
             } else {
                 Text(" ").font(.bodyMd)
             }
