@@ -20,16 +20,6 @@ enum Theme {
     static let wax = Color(hex: 0x9c2f3c)
     static let waxDeep = Color(hex: 0x6e1f2a)
 
-    // The kingdom's inhabitants, who come out on a solved board.
-    static let dragon = Color(hex: 0x7cc576)
-    static let dragonDeep = Color(hex: 0x56a35c)
-    static let cream = Color(hex: 0xf8ecc4)
-    static let blush = Color(hex: 0xf2a0a8)
-    static let heart = Color(hex: 0xe5677a)
-    static let roof = Color(hex: 0xd9776b)
-    static let door = Color(hex: 0x9a6b4a)
-    static let bird = Color(hex: 0x6fa8dc)
-
     static let regions: [Color] = [
         0xa8cbe0, 0xf2c58a, 0xb9d9a3, 0xe9a9a1, 0xcbb8de, 0xf1e28f,
         0x9ed1c6, 0xe6b8cf, 0xc9c48a, 0xf4b98c, 0xb4c1e3,
