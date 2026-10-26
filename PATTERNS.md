@@ -19,9 +19,12 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Grid tile | `Views/RealmView.swift` PuzzleTile | Small gold crown in the corner once solved |
 | Clue (stepped hint) | `Model/HintEngine.swift`, `Board/BoardView.swift` Spotlight / GhostCross | Same rules as `tools/generate.py`; `tools/hintcheck/run.sh` (on the Mac) must report 0 failures after any change |
 | Haptic per action | `Model/Haptics.swift` | One haptic per user action, same frame as the visual |
+| Wide screens (iPad) | `Views/HomeView.swift`, `Views/RealmView.swift` | `.frame(maxWidth: 640).frame(maxWidth: .infinity)` so lists stay a phone-width column |
+| Progress sync | `Model/ProgressStore.swift` | Local file first, mirrored to iCloud key-value store as one `p.<id>` key per puzzle; merge with `PuzzleRecord.merged` |
 
 ## New patterns log
 
 - Solve celebration (gold gilding, star bursts, sheen, stamp) with `SolveTiming` as the shared clock, because Jay asked for a bigger reward on solve.
 - Coronation (royal road, kingdom ripple, lanterns, glints), wax seal with count-up, paper background with contours, compass rose, ink drop on placement, pressable cards, because Jay asked for a more elaborate reward on completion and more polish across the app.
+- Native iPad layout (640pt column cap) and iCloud key-value progress sync, because Jay plays on an iPhone and an iPad and wants one set of progress.
 - Stepped clues with a spotlight, because Jay wanted hints that teach (which rows or colours to study) rather than naming a crown cell.

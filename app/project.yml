@@ -14,6 +14,10 @@ targets:
     platform: iOS
     sources:
       - path: Queens
+    entitlements:
+      path: Queens/Queens.entitlements
+      properties:
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
     info:
       path: Queens/Info.plist
       properties:
