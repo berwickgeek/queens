@@ -39,6 +39,8 @@ struct HomeView: View {
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 32)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
         }
         .background(PaperBackground())
         .toolbar(.hidden, for: .navigationBar)

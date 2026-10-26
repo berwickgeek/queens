@@ -20,6 +20,8 @@ struct RealmView: View {
                     }
                 }
                 .padding(20)
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity)
             }
             .onAppear {
                 if let first = store.firstUnsolved(size: size) {
