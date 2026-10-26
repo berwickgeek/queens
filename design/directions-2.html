@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Queens: three more directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;700;800&family=Young+Serif&family=Nunito+Sans:wght@400;600;700&family=Fredoka:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #f3f4f6; color: #1d1f23; font: 16px/1.5 "Source Sans 3", system-ui, sans-serif; }
+  main { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  .lede { color: #555b66; margin: 0 0 28px; max-width: 70ch; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 28px; }
+  .option h2 { font-size: 20px; margin: 16px 0 4px; }
+  .option p { margin: 0 0 10px; color: #3c414b; font-size: 15px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .swatches span { width: 26px; height: 26px; border-radius: 6px; border: 1px solid rgba(0,0,0,.08); }
+  .screen { width: 390px; height: 760px; border-radius: 36px; overflow: hidden; position: relative; box-shadow: 0 10px 30px rgba(20,30,50,.12); }
+  .board { display: grid; position: relative; }
+  .cell { position: relative; display: grid; place-items: center; aspect-ratio: 1; box-sizing: border-box; min-width: 0; }
+  .bar { position: absolute; bottom: 40px; left: 24px; right: 24px; display: flex; gap: 12px; }
+
+  /* D: Azulejo */
+  .d { background: #f5f8fb; color: #163a6b; font-family: Figtree, sans-serif; }
+  .d .top { padding: 54px 24px 0; display: flex; justify-content: space-between; align-items: center; }
+  .d .lvl { font-weight: 800; font-size: 26px; }
+  .d .sub { font-size: 14px; color: #4b6283; font-weight: 500; }
+  .d .timer { font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; color: #163a6b; border: 2px solid #163a6b; border-radius: 10px; padding: 2px 10px; }
+  .d .boardwrap { margin: 40px 18px 0; padding: 5px; background: #d9e1ea; border-radius: 8px; }
+  .d .board { gap: 3px; }
+  .d .cell { border-radius: 3px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.08), inset 0 2px 0 rgba(255,255,255,.55); }
+  .d .cell::before { content: ""; position: absolute; inset: 0; border-radius: 3px; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.55), rgba(255,255,255,0) 45%); }
+  .d .bar button { flex: 1; height: 54px; border: 0; border-radius: 12px; font: 700 16px Figtree; background: #e3eaf2; color: #163a6b; }
+  .d .bar .primary { background: #163a6b; color: #fff; }
+
+  /* E: Storybook map */
+  .e { background: #fbfcfd; color: #2a3446; font-family: "Nunito Sans", sans-serif; }
+  .e .top { padding: 54px 26px 0; text-align: center; }
+  .e .lvl { font-family: "Young Serif", serif; font-size: 30px; line-height: 1.15; }
+  .e .sub { font-size: 15px; color: #5a6578; margin-top: 4px; }
+  .e .timer { font-variant-numeric: tabular-nums; font-weight: 700; color: #2a3446; }
+  .e .boardwrap { margin: 30px 20px 0; position: relative; }
+  .e .board { gap: 0; }
+  .e .wash { filter: url(#watercolour); }
+  .e svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; filter: url(#wobble); }
+  .e .x { color: rgba(42,52,70,.45); font-family: "Young Serif"; font-size: 15px; }
+  .e .bar button { flex: 1; height: 52px; border: 1.5px solid #2a3446; border-radius: 26px; background: #fff; font: 700 15px "Nunito Sans"; color: #2a3446; }
+  .e .compass { position: absolute; bottom: 118px; right: 26px; opacity: .55; }
+
+  /* F: Cross-stitch sampler */
+  .f { background: #f6f7f4; color: #3a2f4a; font-family: Fredoka, sans-serif;
+       background-image: radial-gradient(rgba(58,47,74,.07) 1px, transparent 1.2px); background-size: 6px 6px; }
+  .f .top { padding: 54px 24px 0; display: flex; justify-content: space-between; align-items: baseline; }
+  .f .lvl { font-weight: 600; font-size: 26px; }
+  .f .sub { font-size: 14px; color: #5f5570; font-weight: 500; }
+  .f .timer { font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .f .hoop { margin: 36px 16px 0; padding: 10px; background: #fff; border-radius: 16px; border: 2px dashed rgba(58,47,74,.35); }
+  .f .board { gap: 0; }
+  .f .cell { background-blend-mode: multiply; }
+  .f .bar button { flex: 1; height: 54px; border: 0; border-radius: 16px; font: 600 16px Fredoka; background: #fff; color: #3a2f4a; box-shadow: 0 0 0 2px #3a2f4a inset; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <filter id="watercolour"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="4"/><feDisplacementMap in="SourceGraphic" scale="9"/></filter>
+  <filter id="wobble"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="2"/><feDisplacementMap in="SourceGraphic" scale="3"/></filter>
+</svg>
+<main>
+  <h1>Queens: three more directions</h1>
+  <p class="lede">Same 8x8 puzzle and position as the first page, three new looks. Each takes its whimsy from a craft: glazed tiles, a hand-drawn map, embroidery.</p>
+  <div class="row">
+    <section class="option">
+      <div class="screen d" id="D"></div>
+      <h2>D. Azulejo</h2>
+      <p>Glazed ceramic tiles, Lisbon-style: each region is a different glaze with a soft highlight and grout lines between tiles, on a crisp white-blue page with cobalt ink. Queens are hand-painted cobalt crowns. <b>Whimsy:</b> a placed queen settles with a tiny tile "clink" (a short sharp haptic), and a solved board flips its tiles over in a wave to show a white-and-blue patterned back. Clean and calm, readable at 11x11. Less overtly cute than the others.</p>
+      <div class="swatches" id="swD"></div>
+    </section>
+    <section class="option">
+      <div class="screen e" id="E"></div>
+      <h2>E. Storybook map</h2>
+      <p>Each region is a kingdom on a hand-drawn map: watercolour washes that bleed a little at the edges, with wobbly ink borders. Every queen rules one kingdom. Storybook serif titles. <b>Whimsy:</b> puzzles get small invented kingdom names in the picker ("The Marsh of Eight"), the washes deepen as you place queens, and a solve unfurls a little banner over the board. The most charming and the most decorative; the soft edges cost some clarity on the biggest boards.</p>
+      <div class="swatches" id="swE"></div>
+    </section>
+    <section class="option">
+      <div class="screen f" id="F"></div>
+      <h2>F. Cross-stitch sampler</h2>
+      <p>Regions are blocks of thread colour stitched on pale cloth, with a dashed backstitch where regions meet. The crosses you mark are literal cross-stitches. Soft rounded type, a dashed "hoop" round the board. <b>Whimsy:</b> marking a cell stitches the X in two quick strokes, queens are embroidered crowns, and a solve finishes the sampler with a stitched border running round the hoop. Cosy and tactile. The texture is the busiest of the six.</p>
+      <div class="swatches" id="swF"></div>
+    </section>
+  </div>
+</main>
+<script>
+const P = { n: 8, regions: "aaaabbbbeeabbbbbeaaabcbbeedaacbbeeeacccbeeeafffbgggggfffggghhfff" };
+const queens = [[0,3],[2,5],[4,0]];
+const xs = [[0,2],[0,4],[1,2],[1,3],[1,4],[3,4],[3,5],[3,6],[5,1],[1,6]];
+const pal = {
+  D: ["#9cc3e6","#f4c96b","#8fcfb8","#f2a08f","#c4b3e3","#e8e0c9","#7fb0c9","#f0b6cf","#b7d38a","#f6d9a8","#a9b8d9"],
+  E: ["#a8cbe0","#f2c58a","#b9d9a3","#e9a9a1","#cbb8de","#f1e28f","#9ed1c6","#e6b8cf","#c9c48a","#f4b98c","#b4c1e3"],
+  F: ["#e58fa3","#f0b860","#8cc6a0","#7fb4dc","#b79ad6","#f2d36b","#e98d6c","#6fbfb4","#a7c26a","#d99ac9","#93a6e0"],
+};
+const crown = (fill, stroke, size, w=1.6) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="M3 18 L4.5 7.5 L9 12 L12 5 L15 12 L19.5 7.5 L21 18 Z" fill="${fill}" stroke="${stroke}" stroke-width="${w}" stroke-linejoin="round"/><rect x="3" y="18.5" width="18" height="2.5" rx="1.2" fill="${fill}" stroke="${stroke}" stroke-width="${w*.9}"/></svg>`;
+const reg = (r,c) => P.regions[r*P.n+c];
+const has = (list,r,c) => list.some(q => q[0]===r && q[1]===c);
+
+function cells(key, render) {
+  const n = P.n, el = document.createElement("div");
+  el.className = "board"; el.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    render(cell, r, c, pal[key][reg(r,c).charCodeAt(0)-97]);
+    el.appendChild(cell);
+  }
+  return el;
+}
+function swatches(id, list) { document.getElementById(id).innerHTML = list.map(h => `<span title="${h}" style="background:${h}"></span>`).join(""); }
+
+// D
+document.getElementById("D").innerHTML = `<div class="top"><div><div class="lvl">Puzzle 23</div><div class="sub">8 by 8</div></div><div class="timer">1:42</div></div><div class="boardwrap"></div><div class="bar"><button>Undo</button><button>Clear</button><button class="primary">Hint</button></div>`;
+document.querySelector("#D .boardwrap").appendChild(cells("D", (cell, r, c, col) => {
+  cell.style.background = col;
+  if (has(queens,r,c)) cell.innerHTML = crown("#163a6b", "#163a6b", 26);
+  else if (has(xs,r,c)) cell.innerHTML = `<span style="color:rgba(22,58,107,.45);font-weight:700;font-size:15px">×</span>`;
+}));
+
+// E
+const compass = `<svg class="compass" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15" fill="none" stroke="#2a3446" stroke-width="1"/><path d="M17 4 L20 17 L17 30 L14 17 Z" fill="#2a3446"/><text x="17" y="3.2" font-size="5" text-anchor="middle" fill="#2a3446">N</text></svg>`;
+document.getElementById("E").innerHTML = `${compass}<div class="top"><div class="lvl">The Marsh of Eight</div><div class="sub">3 of 8 queens crowned, <span class="timer">1:42</span></div></div><div class="boardwrap"><div class="wash"></div></div><div class="bar"><button>Undo</button><button>Clear</button><button>Hint</button></div>`;
+const wrapE = document.querySelector("#E .boardwrap");
+wrapE.querySelector(".wash").appendChild(cells("E", (cell, r, c, col) => { cell.style.background = col; }));
+const marks = cells("E", (cell, r, c) => {
+  if (has(queens,r,c)) cell.innerHTML = crown("#2a3446", "#2a3446", 26, 1.2);
+  else if (has(xs,r,c)) cell.innerHTML = `<span class="x">×</span>`;
+});
+marks.style.position = "absolute"; marks.style.inset = "0";
+wrapE.appendChild(marks);
+{
+  const n = P.n, s = 100 / n; let d = "";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    if (c < n-1 && reg(r,c) !== reg(r,c+1)) d += `M${(c+1)*s} ${r*s} V${(r+1)*s} `;
+    if (r < n-1 && reg(r,c) !== reg(r+1,c)) d += `M${c*s} ${(r+1)*s} H${(c+1)*s} `;
+  }
+  wrapE.insertAdjacentHTML("beforeend", `<svg class="lines" viewBox="-1 -1 102 102" preserveAspectRatio="none"><rect x="0" y="0" width="100" height="100" fill="none" stroke="#2a3446" stroke-width=".9"/><path d="${d}" fill="none" stroke="#2a3446" stroke-width=".6" stroke-linecap="round"/></svg>`);
+}
+
+// F
+document.getElementById("F").innerHTML = `<div class="top"><div><div class="lvl">Sampler 23</div><div class="sub">8 by 8</div></div><div class="timer">1:42</div></div><div class="hoop"></div><div class="bar"><button>Undo</button><button>Clear</button><button>Hint</button></div>`;
+const stitch = (col) => `repeating-linear-gradient(45deg, rgba(255,255,255,.22) 0 1.5px, transparent 1.5px 6px), repeating-linear-gradient(-45deg, rgba(0,0,0,.08) 0 1.5px, transparent 1.5px 6px), ${col}`;
+document.querySelector("#F .hoop").appendChild(cells("F", (cell, r, c, col) => {
+  const n = P.n, k = "#3a2f4a";
+  cell.style.background = stitch(col);
+  const b = (cond) => cond ? `2px dashed ${k}` : "none";
+  cell.style.borderTop = b(r > 0 && reg(r,c) !== reg(r-1,c));
+  cell.style.borderLeft = b(c > 0 && reg(r,c) !== reg(r,c-1));
+  if (has(queens,r,c)) cell.innerHTML = crown("#fff", k, 26, 1.8);
+  else if (has(xs,r,c)) cell.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18"><path d="M3 3 L15 15 M15 3 L3 15" stroke="${k}" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 2.2" opacity=".75"/></svg>`;
+}));
+
+swatches("swD", ["#f5f8fb","#163a6b", ...pal.D]);
+swatches("swE", ["#fbfcfd","#2a3446", ...pal.E]);
+swatches("swF", ["#f6f7f4","#3a2f4a", ...pal.F]);
+</script>
+</body>
+</html>
