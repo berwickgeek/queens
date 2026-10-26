@@ -17,7 +17,6 @@ struct BoardView: View {
                 WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, inset: inset, side: side)
                 PencilGrid(n: game.n, inset: inset)
                     .stroke(Theme.pencil, lineWidth: 1)
-                MapLand(puzzle: game.puzzle, trigger: game.solveTrigger, shown: game.gilded, animate: !reduceMotion, inset: inset)
                 // Celebration layers stay mounted and draw nothing at rest, so a trigger bump always animates.
                 if !reduceMotion {
                     KingdomRipple(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
@@ -28,10 +27,7 @@ struct BoardView: View {
                         .allowsHitTesting(false)
                         .transition(.opacity)
                 }
-                InkLayer(
-                    puzzle: game.puzzle, inset: inset, gilded: game.gilded, gildDelay: SolveTiming.finale(rows: game.n),
-                    trigger: game.solveTrigger, animate: !reduceMotion
-                )
+                InkLayer(puzzle: game.puzzle, inset: inset, gilded: game.gilded, gildDelay: SolveTiming.finale(rows: game.n))
                 if let step = game.clueStep {
                     ForEach(step.cells.sorted(), id: \.self) { hint in
                         Group {
@@ -60,6 +56,7 @@ struct BoardView: View {
                         .id(game.solveTrigger)
                     }
                 }
+                Inhabitants(puzzle: game.puzzle, trigger: game.solveTrigger, shown: game.gilded, animate: !reduceMotion, inset: inset, side: side)
             }
             .frame(width: side, height: side)
             .keyframeAnimator(initialValue: 1.0, trigger: game.solveTrigger) { view, scale in
@@ -83,8 +80,7 @@ struct BoardView: View {
     }
 
     private func marks(cell: CGFloat) -> some View {
-        let lands = Lands(puzzle: game.puzzle)
-        return ForEach(0..<game.n * game.n, id: \.self) { i in
+        ForEach(0..<game.n * game.n, id: \.self) { i in
             MarkView(
                 mark: game.marks[i],
                 clashing: game.clashes.contains(i),
@@ -94,8 +90,8 @@ struct BoardView: View {
                 solveTrigger: game.solveTrigger,
                 gilded: game.gilded,
                 bounceDelay: Double(i / game.n) * SolveTiming.rowStagger,
-                landDelay: reduceMotion ? 0 : lands.time[i],
-                reduceMotion: reduceMotion
+                reduceMotion: reduceMotion,
+                crossFade: reduceMotion ? 0 : SolveTiming.critters(rows: game.n)
             )
             .frame(width: cell, height: cell)
             .offset(x: inset + CGFloat(i % game.n) * cell, y: inset + CGFloat(i / game.n) * cell)
@@ -225,8 +221,6 @@ private struct InkLayer: View {
     let inset: CGFloat
     let gilded: Bool
     let gildDelay: Double
-    let trigger: Int
-    let animate: Bool
 
     var body: some View {
         ZStack {
@@ -241,7 +235,6 @@ private struct InkLayer: View {
                 .stroke(Theme.gold, lineWidth: 2.4)
                 .opacity(gilded ? 1 : 0)
                 .animation(gilded ? .easeOut(duration: 0.5).delay(gildDelay) : .easeOut(duration: 0.2), value: gilded)
-            Battlements(puzzle: puzzle, trigger: trigger, shown: gilded, animate: animate, inset: inset)
         }
         .distortionEffect(
             ShaderLibrary.inkWobble(.float(0.05), .float(1.6)),
@@ -261,9 +254,9 @@ private struct MarkView: View {
     let solveTrigger: Int
     let gilded: Bool
     let bounceDelay: Double
-    /// When the map reaches this cell on a solve: the cross gives way to land, the crown settles on its keep.
-    let landDelay: Double
     let reduceMotion: Bool
+    /// Crosses clear off a solved board as the kingdom comes alive.
+    let crossFade: Double
 
     var body: some View {
         ZStack {
@@ -276,7 +269,7 @@ private struct MarkView: View {
                     .foregroundStyle(Theme.muted)
                     .offset(y: -cell * 0.03)
                     .opacity(gilded ? 0 : 1)
-                    .animation(gilded ? .easeOut(duration: 0.2).delay(landDelay) : nil, value: gilded)
+                    .animation(gilded ? .easeOut(duration: 0.25).delay(crossFade) : nil, value: gilded)
             case .queen:
                 if !reduceMotion {
                     SparkleBurst(trigger: solveTrigger, delay: bounceDelay + SolveTiming.peak - 0.04, cell: cell)
@@ -300,9 +293,6 @@ private struct MarkView: View {
                             SpringKeyframe(1.0, duration: 0.4, spring: .bouncy)
                         }
                     }
-                    .scaleEffect(gilded ? 0.74 : 1)
-                    .offset(y: gilded ? -cell * 0.14 : 0)
-                    .animation(gilded ? .spring(duration: 0.4, bounce: 0.3).delay(landDelay) : nil, value: gilded)
                     .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
             }
         }
