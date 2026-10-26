@@ -99,8 +99,9 @@ struct GameView: View {
                 .font(.headlineMd)
                 .foregroundStyle(Theme.ink)
             HStack(spacing: 10) {
+                CrownTally(placed: game.queenCount, total: game.n, gilded: game.gilded)
                 TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    Text("\(game.queenCount) of \(game.n) crowned · \(formatTime(game.elapsed(at: ctx.date)))")
+                    Text(formatTime(game.elapsed(at: ctx.date)))
                         .font(.timer)
                         .foregroundStyle(Theme.muted)
                         .contentTransition(.numericText())

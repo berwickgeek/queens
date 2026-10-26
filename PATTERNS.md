@@ -6,6 +6,7 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 |---|---|---|
 | Card (white, 18pt radius, 1pt border) | `Views/HomeView.swift` RealmCard | Dark ink variant: ContinueCard |
 | Pill button | `Views/Components.swift` PillButtonStyle | `prominent: true` for the one primary action |
+| Crown tally | `Views/Components.swift` CrownTally | One pencil outline per kingdom, inked as crowns go down; game header |
 | Difficulty | `Views/Components.swift` TierDots | |
 | Puzzle thumbnail | `Views/Components.swift` MiniBoard | Canvas, no shaders |
 | Board | `Board/BoardView.swift` | Wash, pencil grid, ink borders, marks, in that z-order |
@@ -30,3 +31,4 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Native iPad layout (640pt column cap) and iCloud key-value progress sync, because Jay plays on an iPhone and an iPad and wants one set of progress.
 - Stepped clues with a spotlight, because Jay wanted hints that teach (which rows or colours to study) rather than naming a crown cell.
 - Pin (one save point per game, marks since it pencilled in), because Jay wanted to save a board, test a guess and roll back.
+- Crown tally in the game header in place of "3 of 7 crowned", because Jay wanted to see progress as small crowns.
