@@ -313,6 +313,13 @@ final class GameModel {
         if clue.transient || clue.targets.allSatisfy({ marks[$0] != .empty }) { clearHint() }
     }
 
+    /// The player closes the clue. The game stays marked as hinted.
+    func dismissHint() {
+        guard clue != nil else { return }
+        clearHint()
+        Haptics.shared.undo()
+    }
+
     private func clearHint() {
         guard clue != nil else { return }
         withAnimation(.easeOut(duration: 0.3)) {
