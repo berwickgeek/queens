@@ -26,6 +26,13 @@ final class GameModel {
     /// The crown most recently placed without a clash, and a bump for its ink drop.
     private(set) var lastPlaced = 0
     private(set) var placeTrigger = 0
+    /// The kingdom most recently finished (its crown placed and every other cell crossed), and a bump for its shine.
+    private(set) var lastSealed = 0
+    private(set) var sealTrigger = 0
+    private(set) var sealDelay = 0.0
+    /// The rare extra drawn for the coronation now playing.
+    private(set) var flourish = Flourish.none
+    private(set) var cometTrigger = 0
     /// Crowns turn gold once the solve celebration starts (and stay gold on a finished board).
     private(set) var gilded: Bool
     /// The board as it was when pinned, so a guess can be tested and abandoned. One pin per game.
@@ -40,6 +47,8 @@ final class GameModel {
     private var dragStart: Int?
     private var dragMode: DragMode?
     private var dragMoved = false
+    /// Kingdoms already finished when the drag began, so only new ones chime when it ends.
+    private var sealedBeforeDrag: Set<Int> = []
 
     init(puzzle: Puzzle, store: ProgressStore) {
         self.puzzle = puzzle
@@ -126,6 +135,7 @@ final class GameModel {
             dragMoved = true
             // Dragging from a cross erases crosses; from anywhere else it lays them.
             dragMode = marks[start] == .cross ? .erase : .cross
+            sealedBeforeDrag = sealedRegions()
             pushUndo()
             paint(start)
         }
@@ -135,7 +145,13 @@ final class GameModel {
     func touchEnded() {
         defer { dragStart = nil; dragMode = nil }
         guard !complete, let start = dragStart else { return }
-        if dragMoved { refreshClue(); persist() } else { tap(start) }
+        if dragMoved {
+            announceSealed(since: sealedBeforeDrag)
+            refreshClue()
+            persist()
+        } else {
+            tap(start)
+        }
     }
 
     private func paint(_ cell: Int) {
@@ -154,6 +170,7 @@ final class GameModel {
     /// Empty, then cross, then queen, then empty.
     func tap(_ cell: Int) {
         pushUndo()
+        let sealedBefore = sealedRegions()
         defer { refreshClue() }
         switch marks[cell] {
         case .empty:
@@ -162,11 +179,14 @@ final class GameModel {
         case .cross:
             withAnimation(.spring(duration: 0.4, bounce: 0.4)) { marks[cell] = .queen }
             queenPlaced(cell)
+            // Let the crown land before its kingdom chimes.
+            announceSealed(since: sealedBefore, after: 0.2)
         case .queen:
             marks[cell] = .empty
             Haptics.shared.remove()
             withAnimation(.easeOut(duration: 0.2)) { clashes = computeClashes() }
         }
+        if marks[cell] == .cross { announceSealed(since: sealedBefore) }
         persist()
     }
 
@@ -178,7 +198,7 @@ final class GameModel {
         } else {
             lastPlaced = cell
             placeTrigger += 1
-            if queenCount == n && clashes.isEmpty { solve() } else { Haptics.shared.queen() }
+            if queenCount == n && clashes.isEmpty { solve() } else { Haptics.shared.queen(placed: queenCount, of: n) }
         }
     }
 
@@ -193,14 +213,16 @@ final class GameModel {
             newBest = bestTime != nil
             bestTime = time
         }
-        Haptics.shared.queen()
+        flourish = Flourish.draw()
+        Haptics.shared.lastCrown(rows: n)
         // Let the last crown finish its entrance before every crown bounces.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(450))
             guard complete else { return }
-            Haptics.shared.solved(rows: n)
+            Haptics.shared.solved(rows: n, best: newBest, flourish: flourish)
             gilded = true
             solveTrigger += 1
+            if flourish == .comet { cometTrigger += 1 }
         }
     }
 
@@ -329,6 +351,30 @@ final class GameModel {
     }
 
     // MARK: Rules
+
+    /// Kingdoms that are finished: one crown, not clashing, and every other cell crossed.
+    private func sealedRegions() -> Set<Int> {
+        var crowns = [Int](repeating: 0, count: n), open = Set<Int>()
+        for i in marks.indices {
+            let g = puzzle.regionOf[i]
+            switch marks[i] {
+            case .queen: crowns[g] += clashes.contains(i) ? 2 : 1
+            case .empty: open.insert(g)
+            case .cross: break
+            }
+        }
+        return Set((0..<n).filter { crowns[$0] == 1 && !open.contains($0) })
+    }
+
+    /// Chimes and shines a kingdom the player has just finished. Not on undo, clear or a pin
+    /// return, and not on the last crown, which gets the coronation instead.
+    private func announceSealed(since before: Set<Int>, after delay: Double = 0) {
+        guard !complete, let region = sealedRegions().subtracting(before).first else { return }
+        lastSealed = region
+        sealDelay = delay
+        sealTrigger += 1
+        Haptics.shared.sealed(after: delay)
+    }
 
     private func pushUndo() {
         undoStack.append(marks)

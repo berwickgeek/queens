@@ -41,7 +41,8 @@ struct BoardView: View {
                     RoyalRoad(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, cell: cell)
                 }
                 if !reduceMotion {
-                    InkDrop(trigger: game.placeTrigger, cell: cell)
+                    KingdomSeal(puzzle: game.puzzle, region: game.lastSealed, trigger: game.sealTrigger, delay: game.sealDelay, inset: inset, side: side)
+                    InkDrop(trigger: game.placeTrigger, strength: Double(game.queenCount) / Double(game.n), cell: cell)
                         .offset(x: inset + CGFloat(game.lastPlaced % game.n) * cell, y: inset + CGFloat(game.lastPlaced / game.n) * cell)
                 }
                 marks(cell: cell)
@@ -55,7 +56,8 @@ struct BoardView: View {
                         )
                         .id(game.solveTrigger)
                     }
-                    Lanterns(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
+                    Lanterns(puzzle: game.puzzle, trigger: game.solveTrigger, flourish: game.flourish, inset: inset, side: side)
+                    Comet(trigger: game.cometTrigger, rows: game.n, side: side)
                 }
             }
             .frame(width: side, height: side)

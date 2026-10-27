@@ -157,17 +157,25 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 ## Motion
 | Event | Motion | Haptic |
 |---|---|---|
-| Cross placed | none (frequency rule) | soft light tap |
-| Queen placed | crown scales 0.6 to 1 with spring; a ring of ink spreads from the cell over 500ms; kingdom wash deepens over 450ms | full-strength thud with a short rumble tail |
-| Clash | clashing crowns turn red and shake 3 times over 300ms | two sharp knocks then a gritty buzz |
-| Solve | after 450ms each row of crowns bounces and turns gold with a star burst (70ms stagger); then board pulses to 1.04, sheen sweeps, gold frame line fades in; 500ms later the royal road travels crown to crown (90ms a leg) with a kingdom ripple at each; lanterns rise for 3.4s; ribbon unfurls with the time counting up; wax seal stamps 750ms later | one tap per row rising in strength, a swelling rumble on the finale, seven sparkle ticks, a light footstep per crown on the road, a shimmer for the lanterns, a heavy press for the seal. All times from `Model/SolveTiming.swift` |
+| Cross placed | none (frequency rule) | soft light tap; woodblock tick |
+| Queen placed | crown scales 0.6 to 1 with spring; a ring of ink spreads from the cell over 500 to 700ms, wider and darker with each crown on the board; kingdom wash deepens over 450ms | thud with a short rumble tail, heavier per crown; a marimba bar one pentatonic step higher per crown |
+| Kingdom finished (crown placed, every other cell crossed) | a band of light crosses the kingdom over 600ms, clipped to its border, with a brief tint | two light ticks; two high bars |
+| Last crown | as Queen placed | top bar and its octave, then a rumble that swells into the finale |
+| Clash | clashing crowns turn red and shake 3 times over 300ms | two sharp knocks then a gritty buzz; two low bars a semitone apart |
+| Solve | after 450ms each row of crowns bounces and turns gold with a star burst (70ms stagger); then board pulses to 1.04, sheen sweeps, gold frame line fades in; 500ms later the royal road travels crown to crown (90ms a leg) with a kingdom ripple at each; lanterns rise for 3.4s; ribbon unfurls with the time counting up; wax seal stamps 750ms later | one tap and bar per row rising in strength, a swelling rumble and bell chord on the finale, seven sparkle ticks, a light footstep and tick per crown on the road, a shimmer and six random bells for the lanterns, a heavy press and thump for the seal. All times from `Model/SolveTiming.swift` |
+| New best | the seal is gilt (gold wax, red crown) | a run of five ticks and bells 250ms after the seal |
+| Festival (1 solve in 16, by chance) | twice the lanterns, each in its kingdom's colour, rising for 4.6s | 14 lantern bells |
+| Shooting star (1 solve in 16, by chance) | a gold star with a tapering tail arcs over the board and title 400ms after the lanterns, over 1.1s | descending bells over a rush of air, a long light buzz |
 | Undo | undo arrow bounces down | selection tick |
 | Pin, Return to pin, Re-pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
 | Hint | lightbulb bounces; clue text slides up and fades in, the old one slides out | none |
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |
 
-Reduce Motion: no shake or bounce; crowns and banner fade in. The road, ripples, lanterns, glints and ink drop are not drawn; the seal fades in rather than drops; Home cards fade without rising.
+Reduce Motion: no shake or bounce; crowns and banner fade in. The road, ripples, lanterns, shooting star, kingdom shine, glints and ink drop are not drawn; the seal fades in rather than drops; Home cards fade without rising.
+
+## Sound
+The wood and bell set: a woodblock tick for crosses, marimba bars for crowns, small bells for the coronation. All synthesised by `tools/make_sounds.py` into `app/Queens/Resources/Sounds`, pitched on D major pentatonic so crowns climb a scale that cannot sound wrong and the finale resolves home. Sounds play inside the Core Haptics pattern for their event, so each lands with its haptic (iPad plays the sound alone). The audio session is ambient: the silent switch mutes it and other audio keeps playing. A speaker button in the game screen's toolbar turns sound off (`sound` in UserDefaults). Lantern bells pick pitch and gap at random so no two solves ring the same.
 
 ## States
 | State | Rule |

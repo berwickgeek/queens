@@ -9,6 +9,7 @@ struct GameView: View {
     @State private var undoTick = 0
     @State private var hintTick = 0
     @State private var pinTick = 0
+    @AppStorage(Haptics.soundKey) private var soundOn = true
 
     init(puzzle: Puzzle, store: ProgressStore) {
         _game = State(initialValue: GameModel(puzzle: puzzle, store: store))
@@ -48,6 +49,15 @@ struct GameView: View {
         .animation(.easeOut(duration: 0.25), value: game.clueStep?.text)
         .navigationTitle(Naming.realm(game.n).name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { soundOn.toggle() } label: {
+                    Image(systemName: soundOn ? "speaker.wave.2" : "speaker.slash")
+                        .foregroundStyle(Theme.ink)
+                }
+                .accessibilityLabel(soundOn ? "Turn sound off" : "Turn sound on")
+            }
+        }
         .onAppear {
             Haptics.shared.prepare()
             game.resume()
