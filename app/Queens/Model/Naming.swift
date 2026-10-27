@@ -25,10 +25,19 @@ enum Naming {
         "Orchard", "Meadow", "Barrow", "Tarn", "Coppice", "Marches", "Firth",
     ]
 
+    /// Places for the second set (puzzles 121 to 240), so its names never repeat the first set's.
+    private static let farPlaces = [
+        "Steading", "Spinney", "Mere", "Holt", "Shaw", "Garth", "Ford", "Knoll", "Lea",
+        "Scar", "Clough", "Carr", "Rise", "Ness", "Grange", "Hythe", "Dell", "Brake",
+        "Tor", "Cleave", "Haven", "Burn", "Pike", "Wick", "Croft",
+    ]
+
     /// 24 adjectives x 25 places give 600 distinct pairs (coprime counts); the
     /// multiplier scatters them so neighbouring puzzles do not read alphabetically.
     static func puzzleName(size: Int, number: Int) -> String {
-        let g = ((size - 7) * 120 + number - 1) * 367 % 600
-        return "The \(adjectives[g % adjectives.count]) \(places[g % places.count])"
+        let set = (number - 1) / 120
+        let g = ((size - 7) * 120 + (number - 1) % 120) * 367 % 600
+        let place = set == 0 ? places[g % places.count] : farPlaces[g % farPlaces.count]
+        return "The \(adjectives[g % adjectives.count]) \(place)"
     }
 }

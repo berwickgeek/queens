@@ -176,5 +176,5 @@ Reduce Motion: no shake or bounce; crowns and banner fade in. The road, ripples,
 | Focus | System focus for VoiceOver; each cell labelled "Row 3, column F, Marsh kingdom, queen" |
 | Disabled | Undo disabled at 40% opacity when there is nothing to undo; Pin when the board is blank; Return to pin and Re-pin until the board differs from the pin |
 | Loading | Puzzles load from the bundle at launch, under 100ms; no spinner |
-| Empty | Never empty: every realm ships with 120 puzzles |
+| Empty | Never empty: every realm ships with 240 puzzles |
 | Error | Clashing queens shown red with shake and haptic; no blocking dialogs |

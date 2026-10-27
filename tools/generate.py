@@ -342,7 +342,41 @@ def make_one(args):
     return None
 
 
+def extend(count, tier):
+    """Append `count` puzzles of one tier to each size, keeping existing ids so progress survives."""
+    dest = os.path.join(os.path.dirname(__file__), "..", "app", "Queens", "Resources", "puzzles.json")
+    with open(dest) as f:
+        out = json.load(f)
+    with Pool(os.cpu_count()) as pool:
+        for n in range(7, 12):
+            have = out[str(n)]
+            seen = {p["regions"] for p in have}
+            batch = 0
+            fresh = []
+            while len(fresh) < count:
+                # Seeds above 500k never overlap the original run's.
+                base = n * 1_000_000 + 500_000 + batch * 10_000
+                jobs = [(n, base + i) for i in range(count)]
+                for p in pool.map(make_one, jobs, chunksize=4):
+                    if p and p["tier"] == tier and p["regions"] not in seen:
+                        seen.add(p["regions"])
+                        fresh.append(p)
+                batch += 1
+            fresh = sorted(fresh[:count], key=lambda p: p["score"])
+            for i, p in enumerate(fresh):
+                p["id"] = f"{n}-{len(have) + i + 1:03d}"
+            have.extend(fresh)
+            print(f"size {n}: +{len(fresh)} tier {tier}, now {len(have)}", flush=True)
+            with open(dest, "w") as f:
+                json.dump(out, f, separators=(",", ":"))
+    print("wrote", os.path.abspath(dest))
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--extend":
+        # e.g. `generate.py --extend 120 3` adds 120 medium (tier 3) puzzles per size.
+        extend(int(sys.argv[2]), int(sys.argv[3]))
+        return
     per_size = int(sys.argv[1]) if len(sys.argv) > 1 else 120
     out = {}
     with Pool(os.cpu_count()) as pool:
