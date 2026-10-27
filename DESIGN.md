@@ -158,7 +158,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Event | Motion | Haptic |
 |---|---|---|
 | Cross placed | none (frequency rule) | soft light tap; woodblock tick |
-| Queen placed | crown scales 0.6 to 1 with spring; a ring of ink spreads from the cell over 500 to 700ms, wider and darker with each crown on the board; kingdom wash deepens over 450ms | thud with a short rumble tail, heavier per crown; a marimba bar one pentatonic step higher per crown |
+| Queen placed | crown scales 0.6 to 1 with spring; a ring of ink spreads from the cell over 500 to 700ms, wider and darker with each crown on the board; kingdom wash deepens over 450ms | full-strength thud with a short rumble tail that grows longer and deeper per crown; a marimba bar one pentatonic step higher per crown |
 | Kingdom finished (crown placed, every other cell crossed) | a band of light crosses the kingdom over 600ms, clipped to its border, with a brief tint | two light ticks; two high bars |
 | Last crown | as Queen placed | top bar and its octave, then a rumble that swells into the finale |
 | Clash | clashing crowns turn red and shake 3 times over 300ms | two sharp knocks then a gritty buzz; two low bars a semitone apart |

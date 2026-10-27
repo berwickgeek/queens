@@ -66,15 +66,15 @@ final class Haptics {
 
     func undo() { select.selectionChanged() }
 
-    /// A thud with a short low tail. Crown `placed` of `n` lands heavier than the one before and
-    /// rings one step higher up the scale, so the board sounds closer to done as it fills.
+    /// A full-strength thud with a short low tail. Crown `placed` of `n` has a longer, deeper tail than
+    /// the one before and rings one step higher up the scale, so the board sounds closer to done as it fills.
     func queen(placed: Int, of n: Int) {
         let k = Float(placed - 1) / Float(max(n - 1, 1))
         play([
-            transient(at: 0, intensity: 0.75 + 0.25 * k, sharpness: 0.5 - 0.15 * k),
-            continuous(at: 0.01, duration: 0.07 + 0.06 * Double(k), intensity: 0.4 + 0.35 * k, sharpness: 0.2),
+            transient(at: 0, intensity: 1.0, sharpness: 0.5 - 0.15 * k),
+            continuous(at: 0.01, duration: 0.07 + 0.06 * Double(k), intensity: 0.55 + 0.2 * k, sharpness: 0.2),
             sound(note(placed - 1), at: 0, volume: 0.6 + 0.4 * k),
-        ]) { heavy.impactOccurred(intensity: CGFloat(0.75 + 0.25 * k)) }
+        ]) { heavy.impactOccurred(intensity: 1.0) }
     }
 
     /// The last crown: the top note and its octave, then a rumble that swells through the pause
