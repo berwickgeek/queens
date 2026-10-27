@@ -31,8 +31,8 @@ struct CrownTally: View {
         HStack(spacing: size * 0.2) {
             ForEach(0..<total, id: \.self) { k in
                 ZStack {
-                    Crown().stroke(Theme.pencil, lineWidth: 1)
-                    Crown().fill(gilded ? Theme.gold : Theme.ink)
+                    Crown(seed: k + 1).stroke(Theme.pencil, lineWidth: 1)
+                    Crown(seed: k + 1).fill(gilded ? Theme.gold : Theme.ink)
                         .scaleEffect(k < placed ? 1 : 0.4)
                         .opacity(k < placed ? 1 : 0)
                 }

@@ -34,3 +34,4 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Pin (one save point per game, marks since it pencilled in), because Jay wanted to save a board, test a guess and roll back.
 - Crown tally in the game header in place of "3 of 7 crowned", because Jay wanted to see progress as small crowns.
 - Rising stakes per crown, kingdom-finished shine, gilt seal for a new best, rare festival and shooting-star coronations, and the wood and bell sound set, because Jay asked to lean on reward psychology (anticipation, goal gradient, variable reward) and add sound.
+- Hand-drawn crowns and crosses (`InkCross`, seeded `Crown`, ink wobble on the marks layer), because Jay wanted the marks to look hand drawn like the borders.

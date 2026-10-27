@@ -130,7 +130,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 1. Watercolour wash: each cell filled with its region pigment, run through a noise distortion shader so edges bleed, plus a pigment granulation shader.
 2. Pencil grid: 0.5pt line at 28% ink between every cell.
 3. Ink borders: 2.6pt (2.2pt above 8x8) where neighbouring cells are in different regions, 3.6pt outer frame, both through a gentle wobble shader (`inkWobble`).
-4. Marks: crosses (muted serif ×) and crowns (ink).
+4. Marks, drawn by hand: crosses are two tapered pen strokes in `on-surface-muted` (`InkCross`), crowns have bowed sides, uneven points and a wavering band (`Crown`), each tilted up to 5°. Both take the cell index as a seed, so no two cells match but a mark keeps its shape. A fine `inkWobble` over the marks layer gives the pen's ragged edge.
 
 **Solved banner.** A ribbon that unfurls under the board with "Crowned in 3:12" (the time counts up from 0:00 on a fresh solve) and the best time, flanked by two small stars when it is a new best. A `wax` seal pressed with a gold crown drops onto it with a squash and a few flecks of wax. Play again and Next puzzle fade in once the ribbon is down.
 
