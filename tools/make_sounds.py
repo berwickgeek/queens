@@ -1,7 +1,8 @@
 """Renders the wood-and-bell sound set to app/Queens/Resources/Sounds as 16-bit mono WAVs.
 
 Everything is synthesised (marimba bars, a woodblock, small bells), so there are no samples to licence.
-Pitches sit on a D major pentatonic scale from D4, so crowns climb the scale and the finale resolves home.
+Chimes sit on a D major pentatonic scale from D4. Crowns climb the D major scale a step at a time and the
+last one always lands on D5, so every board size walks up to the tonic before the finale resolves home.
 """
 import wave
 from pathlib import Path
@@ -11,6 +12,7 @@ import numpy as np
 OUT = Path(__file__).resolve().parent.parent / "app/Queens/Resources/Sounds"
 SR = 44100
 PENTA = [0, 2, 4, 7, 9]
+MAJOR = [0, 2, 4, 5, 7, 9, 11]
 rng = np.random.default_rng(7)
 
 
@@ -98,7 +100,7 @@ def main():
     noise(x, 0, 0.03, 0.35, 2500, 3)
     save("tick", x, 0.7)
 
-    # Crowns, kingdom chimes and the gilding run: one marimba bar per scale step, D4 up three octaves.
+    # Kingdom chimes and the gilding run: one marimba bar per scale step, D4 up three octaves.
     for i in range(16):
         x = buf(1.6)
         marimba(x, 0, hz(step(i)))
@@ -145,6 +147,14 @@ def main():
         bell(x, k * 0.05, hz(step(i)), 0.5 - k * 0.025, 1.1)
     noise(x, 0, 0.9, 0.12, 3000, 0.5)
     save("comet", x, 0.7)
+
+    # Crowns: one marimba bar per D major step, A3 up to D5. crown_10 is D5, so crown n of an n-row board
+    # plays crown_10 and the n crowns before it climb the scale to it. Rendered last so the noise above keeps its seed.
+    for k in range(11):
+        d = k - 3
+        x = buf(1.6)
+        marimba(x, 0, hz(MAJOR[d % 7] + 12 * (d // 7)))
+        save(f"crown_{k:02d}", x)
 
     print(f"wrote {len(list(OUT.glob('*.wav')))} sounds to {OUT}")
 
