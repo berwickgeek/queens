@@ -67,17 +67,17 @@ final class Haptics {
     func undo() { select.selectionChanged() }
 
     /// A full-strength thud with a short low tail. Crown `placed` of `n` has a longer, deeper tail than
-    /// the one before and rings one step higher up the scale, so the board sounds closer to done as it fills.
+    /// the one before and rings one step higher up the D major scale, so the board sounds closer to done as it fills.
     func queen(placed: Int, of n: Int) {
         let k = Float(placed - 1) / Float(max(n - 1, 1))
         play([
             transient(at: 0, intensity: 1.0, sharpness: 0.5 - 0.15 * k),
             continuous(at: 0.01, duration: 0.07 + 0.06 * Double(k), intensity: 0.55 + 0.2 * k, sharpness: 0.2),
-            sound(note(placed - 1), at: 0, volume: 0.6 + 0.4 * k),
+            sound(crown(placed, of: n), at: 0, volume: 0.6 + 0.4 * k),
         ]) { heavy.impactOccurred(intensity: 1.0) }
     }
 
-    /// The last crown: the top note and its octave, then a rumble that swells through the pause
+    /// The last crown: D5 and its octave, then a rumble that swells through the pause
     /// before the board bounces, so the finale is felt coming.
     func lastCrown(rows n: Int) {
         let swell = SolveTiming.entrance - 0.03
@@ -90,8 +90,8 @@ final class Haptics {
             transient(at: 0, intensity: 1.0, sharpness: 0.35),
             continuous(at: 0.01, duration: 0.12, intensity: 0.75, sharpness: 0.2),
             continuous(at: 0.13, duration: swell - 0.13, intensity: 0.55, sharpness: 0.1),
-            sound(note(n - 1), at: 0),
-            sound(note(n + 4), at: 0.09, volume: 0.7),
+            sound(crown(n, of: n), at: 0),
+            sound("note_10", at: 0.09, volume: 0.7),
         ], curves: [curve]) { heavy.impactOccurred(intensity: 1.0) }
     }
 
@@ -178,6 +178,9 @@ final class Haptics {
 
     /// The marimba bar `i` steps up the pentatonic scale from D4.
     private func note(_ i: Int) -> String { String(format: "note_%02d", min(max(i, 0), 15)) }
+
+    /// Crown `placed` of `n` on the D major scale, counted down from D5 so the last crown is always the tonic.
+    private func crown(_ placed: Int, of n: Int) -> String { String(format: "crown_%02d", min(max(10 - n + placed, 0), 10)) }
 
     private func sound(_ name: String, at time: Double, volume: Float = 1) -> CHHapticEvent? {
         guard soundOn, let id = sounds[name] else { return nil }
