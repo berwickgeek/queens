@@ -30,4 +30,28 @@ enum SolveTiming {
     static func ribbon(rows: Int) -> Double { roadEnd(rows: rows) + 0.2 }
     /// The wax seal stamps onto the ribbon.
     static func stamp(rows: Int) -> Double { ribbon(rows: rows) + 0.75 }
+    /// A new best: the bells run up after the seal lands.
+    static let bestRun = 0.25
+
+    /// How long the lanterns take to rise and fade. A festival sends up more, for longer.
+    static func lanternSpan(_ flourish: Flourish) -> Double { flourish == .festival ? 4.6 : 3.4 }
+    /// A shooting star crosses the sky above the board once the lanterns are up.
+    static func comet(rows: Int) -> Double { lanterns(rows: rows) + 0.4 }
+    static let cometFlight = 1.1
+}
+
+/// A rare extra on a solve, drawn by chance so a coronation is now and then not the usual one.
+enum Flourish: String {
+    case none, festival, comet
+
+    static func draw() -> Flourish {
+        #if DEBUG
+        if let forced = UserDefaults.standard.string(forKey: "flourish").flatMap(Flourish.init(rawValue:)) { return forced }
+        #endif
+        switch Int.random(in: 0..<16) {
+        case 0: return .festival
+        case 1: return .comet
+        default: return .none
+        }
+    }
 }

@@ -31,7 +31,7 @@ struct BoardView: View {
                 if let step = game.clueStep {
                     ForEach(step.cells.sorted(), id: \.self) { hint in
                         Group {
-                            if step.dots { GhostCross(cell: cell) } else { HintMarker(cell: cell) }
+                            if step.dots { GhostCross(seed: hint + 1, cell: cell) } else { HintMarker(cell: cell) }
                         }
                             .offset(x: inset + CGFloat(hint % game.n) * cell, y: inset + CGFloat(hint / game.n) * cell)
                             .transition(.opacity)
@@ -41,10 +41,11 @@ struct BoardView: View {
                     RoyalRoad(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, cell: cell)
                 }
                 if !reduceMotion {
-                    InkDrop(trigger: game.placeTrigger, cell: cell)
+                    KingdomSeal(puzzle: game.puzzle, region: game.lastSealed, trigger: game.sealTrigger, delay: game.sealDelay, inset: inset, side: side)
+                    InkDrop(trigger: game.placeTrigger, strength: Double(game.queenCount) / Double(game.n), cell: cell)
                         .offset(x: inset + CGFloat(game.lastPlaced % game.n) * cell, y: inset + CGFloat(game.lastPlaced / game.n) * cell)
                 }
-                marks(cell: cell)
+                marks(cell: cell, side: side)
                 if !reduceMotion {
                     Sheen(trigger: game.solveTrigger, delay: SolveTiming.finale(rows: game.n) - 0.1, side: side)
                         .allowsHitTesting(false)
@@ -55,7 +56,8 @@ struct BoardView: View {
                         )
                         .id(game.solveTrigger)
                     }
-                    Lanterns(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
+                    Lanterns(puzzle: game.puzzle, trigger: game.solveTrigger, flourish: game.flourish, inset: inset, side: side)
+                    Comet(trigger: game.cometTrigger, rows: game.n, side: side)
                 }
             }
             .frame(width: side, height: side)
@@ -79,10 +81,12 @@ struct BoardView: View {
         .accessibilityLabel("Board, \(game.n) by \(game.n), \(game.queenCount) crowns placed")
     }
 
-    private func marks(cell: CGFloat) -> some View {
+    private func marks(cell: CGFloat, side: CGFloat) -> some View {
+        ZStack(alignment: .topLeading) {
         ForEach(0..<game.n * game.n, id: \.self) { i in
             MarkView(
                 mark: game.marks[i],
+                seed: i + 1,
                 clashing: game.clashes.contains(i),
                 pencilled: game.pencilled(i),
                 cell: cell,
@@ -96,6 +100,13 @@ struct BoardView: View {
             .offset(x: inset + CGFloat(i % game.n) * cell, y: inset + CGFloat(i / game.n) * cell)
             .allowsHitTesting(false)
         }
+        }
+        .frame(width: side, height: side, alignment: .topLeading)
+        // A finer wobble than the borders, so crowns and crosses have a pen's ragged edge.
+        .distortionEffect(
+            ShaderLibrary.inkWobble(.float(0.2), .float(0.9)),
+            maxSampleOffset: CGSize(width: 1, height: 1)
+        )
     }
 
     private func drag(cell: CGFloat) -> some Gesture {
@@ -246,6 +257,8 @@ private struct InkLayer: View {
 
 private struct MarkView: View {
     let mark: Mark
+    /// The cell index, so each hand-drawn mark keeps its own small quirks.
+    let seed: Int
     let clashing: Bool
     let pencilled: Bool
     let cell: CGFloat
@@ -261,15 +274,15 @@ private struct MarkView: View {
             case .empty:
                 Color.clear
             case .cross:
-                Text("×")
-                    .font(.serif(cell * 0.5))
-                    .foregroundStyle(Theme.muted)
-                    .offset(y: -cell * 0.03)
+                InkCross(seed: seed)
+                    .fill(Theme.muted)
+                    .frame(width: cell * 0.3, height: cell * 0.3)
             case .queen:
                 if !reduceMotion {
                     SparkleBurst(trigger: solveTrigger, delay: bounceDelay + SolveTiming.peak - 0.04, cell: cell)
                 }
                 CrownMark(
+                    seed: seed,
                     color: clashing ? Theme.error : gilded ? Theme.gold : Theme.ink,
                     gilded: gilded,
                     colorDelay: gilded ? bounceDelay + SolveTiming.peak : 0
@@ -299,17 +312,20 @@ private struct MarkView: View {
 
 /// Ink crown with three jewels, drawn on a 24-unit grid.
 private struct CrownMark: View {
+    var seed = 0
     let color: Color
     var gilded = false
     var colorDelay = 0.0
 
     var body: some View {
         ZStack {
-            Crown().fill(color)
+            Crown(seed: seed).fill(color)
             // A dark edge keeps a gold crown readable on the pale yellow and orange kingdoms.
-            Crown().stroke(Theme.goldDeep, lineWidth: 1).opacity(gilded ? 1 : 0)
-            CrownJewels().fill(Theme.paper)
+            Crown(seed: seed).stroke(Theme.goldDeep, style: StrokeStyle(lineWidth: 1, lineJoin: .round)).opacity(gilded ? 1 : 0)
+            CrownJewels(seed: seed).fill(Theme.paper)
         }
+        // Drawn freehand, so never quite straight.
+        .rotationEffect(.degrees(5 * handJitter(seed, 90)))
         .animation(.easeOut(duration: 0.2).delay(colorDelay), value: color)
         .animation(.easeOut(duration: 0.2).delay(colorDelay), value: gilded)
     }
@@ -400,35 +416,115 @@ private struct Sheen: View {
     }
 }
 
+/// A stable value in -1...1 for jittering hand-drawn marks, so a mark keeps its shape between redraws.
+func handJitter(_ seed: Int, _ k: Int) -> CGFloat {
+    var h = UInt64(bitPattern: Int64(seed &* 7919 &+ k &* 104_729 &+ 1))
+    h ^= h >> 33
+    h &*= 0xff51_afd7_ed55_8ccd
+    h ^= h >> 33
+    return CGFloat(h % 2001) / 1000 - 1
+}
+
+/// A crown inked by hand on a 24-unit grid: slightly bowed sides, uneven points and a wavering band.
+/// `seed` nudges each point a little, so crowns on different cells are never quite identical.
 struct Crown: Shape {
+    var seed = 0
+
     func path(in rect: CGRect) -> Path {
         let s = min(rect.width, rect.height) / 24
-        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x * s, y: rect.minY + y * s) }
+        let amount: CGFloat = seed == 0 ? 0 : 0.6
+        var k = 0
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            k += 2
+            return CGPoint(x: rect.minX + (x + amount * handJitter(seed, k)) * s, y: rect.minY + (y + amount * handJitter(seed, k + 1)) * s)
+        }
         var path = Path()
-        path.move(to: p(3, 18))
-        path.addLine(to: p(4.5, 7.5))
-        path.addLine(to: p(9, 12))
-        path.addLine(to: p(12, 5))
-        path.addLine(to: p(15, 12))
-        path.addLine(to: p(19.5, 7.5))
-        path.addLine(to: p(21, 18))
+        let tips = Crown.tips(seed: seed).map { CGPoint(x: rect.minX + $0.x * s, y: rect.minY + $0.y * s) }
+        path.move(to: p(3.1, 18.1))
+        path.addQuadCurve(to: tips[0], control: p(3.2, 12.6))
+        path.addQuadCurve(to: p(9.1, 12.2), control: p(7.2, 10.6))
+        path.addQuadCurve(to: tips[1], control: p(11.0, 9.2))
+        path.addQuadCurve(to: p(15.0, 11.8), control: p(13.3, 8.9))
+        path.addQuadCurve(to: tips[2], control: p(16.9, 10.2))
+        path.addQuadCurve(to: p(20.9, 17.9), control: p(20.9, 12.4))
+        path.addQuadCurve(to: p(3.1, 18.1), control: p(12, 18.7))
         path.closeSubpath()
-        path.addRoundedRect(in: CGRect(origin: p(3, 19.2), size: CGSize(width: 18 * s, height: 2.6 * s)), cornerSize: CGSize(width: 1.2 * s, height: 1.2 * s))
-        for (x, y) in [(4.5, 7.5), (12.0, 5.0), (19.5, 7.5)] {
-            path.addEllipse(in: CGRect(x: rect.minX + (x - 1.9) * s, y: rect.minY + (y - 1.9) * s, width: 3.8 * s, height: 3.8 * s))
+        // The band: a wavering top and bottom edge with rounded ends.
+        path.move(to: p(3.6, 19.4))
+        path.addQuadCurve(to: p(20.5, 19.2), control: p(12, 18.8))
+        path.addQuadCurve(to: p(20.4, 21.8), control: p(21.6, 20.4))
+        path.addQuadCurve(to: p(3.5, 21.9), control: p(12, 22.4))
+        path.addQuadCurve(to: p(3.6, 19.4), control: p(2.4, 20.7))
+        path.closeSubpath()
+        for (i, c) in tips.enumerated() {
+            let w = (3.8 + 0.3 * handJitter(seed, 40 + i)) * s
+            let h = (3.6 + 0.3 * handJitter(seed, 50 + i)) * s
+            path.addEllipse(in: CGRect(x: c.x - w / 2, y: c.y - h / 2, width: w, height: h))
+        }
+        return path
+    }
+
+    /// The three points of the crown in units, uneven on purpose; jewels sit on them.
+    static func tips(seed: Int) -> [CGPoint] {
+        let amount: CGFloat = seed == 0 ? 0 : 0.4
+        return [(4.4, 7.8), (12.3, 4.8), (19.7, 7.3)].enumerated().map { i, t in
+            CGPoint(x: t.0 + amount * handJitter(seed, 60 + i), y: t.1 + amount * handJitter(seed, 70 + i))
+        }
+    }
+}
+
+private struct CrownJewels: Shape {
+    var seed = 0
+
+    func path(in rect: CGRect) -> Path {
+        let s = min(rect.width, rect.height) / 24
+        var path = Path()
+        for c in Crown.tips(seed: seed) {
+            path.addEllipse(in: CGRect(x: rect.minX + (c.x - 0.8) * s, y: rect.minY + (c.y - 0.75) * s, width: 1.6 * s, height: 1.5 * s))
         }
         return path
     }
 }
 
-private struct CrownJewels: Shape {
+/// A cross made of two pen strokes that start heavy and lift off thin, each bent and angled a little
+/// differently per `seed`.
+struct InkCross: Shape {
+    var seed = 0
+
     func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 24
-        var path = Path()
-        for (x, y) in [(4.5, 7.5), (12.0, 5.0), (19.5, 7.5)] {
-            path.addEllipse(in: CGRect(x: rect.minX + (x - 0.8) * s, y: rect.minY + (y - 0.8) * s, width: 1.6 * s, height: 1.6 * s))
+        let w = rect.width, h = rect.height
+        func q(_ x: CGFloat, _ y: CGFloat, _ k: Int) -> CGPoint {
+            CGPoint(x: rect.minX + (x + 0.05 * handJitter(seed, k)) * w, y: rect.minY + (y + 0.05 * handJitter(seed, k + 1)) * h)
         }
+        var path = Path()
+        InkCross.stroke(&path, from: q(0.1, 0.1, 0), to: q(0.9, 0.88, 2), bend: 0.06 * handJitter(seed, 4) - 0.03, width: w * 0.15)
+        InkCross.stroke(&path, from: q(0.88, 0.08, 5), to: q(0.12, 0.92, 7), bend: 0.06 * handJitter(seed, 9) + 0.03, width: w * 0.14)
         return path
+    }
+
+    /// One tapered stroke along a gentle curve, as a filled outline.
+    private static func stroke(_ path: inout Path, from a: CGPoint, to b: CGPoint, bend: CGFloat, width: CGFloat) {
+        let dx = b.x - a.x, dy = b.y - a.y
+        let len = max(hypot(dx, dy), 0.001)
+        let c = CGPoint(x: (a.x + b.x) / 2 - dy / len * bend * len, y: (a.y + b.y) / 2 + dx / len * bend * len)
+        let steps = 14
+        var left: [CGPoint] = [], right: [CGPoint] = []
+        for i in 0...steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            let u = 1 - t
+            let pt = CGPoint(x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y)
+            let tx = 2 * u * (c.x - a.x) + 2 * t * (b.x - c.x)
+            let ty = 2 * u * (c.y - a.y) + 2 * t * (b.y - c.y)
+            let tl = max(hypot(tx, ty), 0.001)
+            // Pressed down at the start, lifting off towards the end.
+            let half = width / 2 * (0.3 + 0.7 * pow(sin(.pi * t), 0.6)) * (1.1 - 0.35 * t)
+            left.append(CGPoint(x: pt.x - ty / tl * half, y: pt.y + tx / tl * half))
+            right.append(CGPoint(x: pt.x + ty / tl * half, y: pt.y - tx / tl * half))
+        }
+        path.move(to: left[0])
+        for pt in left.dropFirst() { path.addLine(to: pt) }
+        for pt in right.reversed() { path.addLine(to: pt) }
+        path.closeSubpath()
     }
 }
 
@@ -460,14 +556,14 @@ private struct Spotlight: Shape {
 
 /// A faint pulsing cross on a cell a clue says to dot.
 private struct GhostCross: View {
+    let seed: Int
     let cell: CGFloat
     @State private var pulse = false
 
     var body: some View {
-        Text("×")
-            .font(.serif(cell * 0.5))
-            .foregroundStyle(Theme.ink)
-            .offset(y: -cell * 0.03)
+        InkCross(seed: seed)
+            .fill(Theme.ink)
+            .frame(width: cell * 0.3, height: cell * 0.3)
             .frame(width: cell, height: cell)
             .opacity(pulse ? 0.2 : 0.55)
             .onAppear {

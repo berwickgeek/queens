@@ -31,8 +31,8 @@ struct CrownTally: View {
         HStack(spacing: size * 0.2) {
             ForEach(0..<total, id: \.self) { k in
                 ZStack {
-                    Crown().stroke(Theme.pencil, lineWidth: 1)
-                    Crown().fill(gilded ? Theme.gold : Theme.ink)
+                    Crown(seed: k + 1).stroke(Theme.pencil, lineWidth: 1)
+                    Crown(seed: k + 1).fill(gilded ? Theme.gold : Theme.ink)
                         .scaleEffect(k < placed ? 1 : 0.4)
                         .opacity(k < placed ? 1 : 0)
                 }
@@ -151,7 +151,7 @@ struct SolvedBanner: View {
         .scaleEffect(x: unfurled ? 1 : 0.05, y: 1)
         .opacity(unfurled ? 1 : 0)
         .overlay(alignment: .top) {
-            StampedSeal(trigger: stampTick, delay: stampDelay, reduceMotion: reduceMotion)
+            StampedSeal(trigger: stampTick, delay: stampDelay, gilt: newBest, reduceMotion: reduceMotion)
                 .offset(y: -28)
         }
         .onAppear {
@@ -165,18 +165,23 @@ struct SolvedBanner: View {
     }
 }
 
-/// A blob of sealing wax pressed with a gold crown.
+/// A blob of sealing wax pressed with a gold crown. A gilt seal, kept for a new best, is gold wax
+/// pressed with a red crown.
 struct WaxSeal: View {
+    var gilt = false
+
     var body: some View {
+        let body = gilt ? Theme.gold : Theme.wax
+        let deep = gilt ? Theme.goldDeep : Theme.waxDeep
         ZStack {
-            WaxBlob().fill(Theme.wax)
-            WaxBlob().stroke(Theme.waxDeep, lineWidth: 1)
+            WaxBlob().fill(body)
+            WaxBlob().stroke(deep, lineWidth: 1)
             // The ring left by the seal's die, and light catching the wax.
-            Circle().inset(by: 7).stroke(Theme.waxDeep.opacity(0.7), lineWidth: 1.2)
-            WaxBlob().fill(LinearGradient(colors: [.white.opacity(0.28), .clear], startPoint: .topLeading, endPoint: .center))
+            Circle().inset(by: 7).stroke(deep.opacity(0.7), lineWidth: 1.2)
+            WaxBlob().fill(LinearGradient(colors: [.white.opacity(gilt ? 0.4 : 0.28), .clear], startPoint: .topLeading, endPoint: .center))
             ZStack {
-                Crown().fill(Theme.gold)
-                Crown().stroke(Theme.goldDeep, lineWidth: 0.8)
+                Crown().fill(gilt ? Theme.wax : Theme.gold)
+                Crown().stroke(gilt ? Theme.waxDeep : Theme.goldDeep, lineWidth: 0.8)
             }
             .padding(11)
             .offset(y: -1)
@@ -215,10 +220,11 @@ private struct SealPose {
 private struct StampedSeal: View {
     let trigger: Int
     let delay: Double
+    let gilt: Bool
     let reduceMotion: Bool
 
     var body: some View {
-        WaxSeal()
+        WaxSeal(gilt: gilt)
             .frame(width: 42, height: 42)
             .keyframeAnimator(initialValue: SealPose(), trigger: trigger) { seal, pose in
                 ZStack {
@@ -231,7 +237,7 @@ private struct StampedSeal: View {
                             .opacity(pose.puff > 0 && pose.puff < 1 ? 1 - pose.puff : 0)
                     }
                     seal
-                        .shadow(color: Theme.waxDeep.opacity(0.35), radius: 2 + 8 * (pose.scale - 1), y: 1 + 4 * (pose.scale - 1))
+                        .shadow(color: (gilt ? Theme.goldDeep : Theme.waxDeep).opacity(0.35), radius: 2 + 8 * (pose.scale - 1), y: 1 + 4 * (pose.scale - 1))
                         .scaleEffect(pose.scale)
                         .rotationEffect(.degrees(pose.rotation))
                         .opacity(pose.opacity)

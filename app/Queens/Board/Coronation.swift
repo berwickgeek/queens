@@ -145,9 +145,11 @@ struct KingdomRipple: View {
 // MARK: Lanterns
 
 /// Small gold lanterns drift up from every crown and out over the title, swaying as they rise.
+/// A festival sends up twice as many, each in its own kingdom's colour, and lets them climb for longer.
 struct Lanterns: View {
     let puzzle: Puzzle
     let trigger: Int
+    let flourish: Flourish
     let inset: CGFloat
     let side: CGFloat
 
@@ -157,14 +159,17 @@ struct Lanterns: View {
     var body: some View {
         let n = puzzle.size
         let cell = (side - inset * 2) / CGFloat(n)
+        let festival = flourish == .festival
+        let each = festival ? 6 : 3
         Color.clear
             .keyframeAnimator(initialValue: 1.0, trigger: trigger) { _, p in
                 Canvas { ctx, _ in
                     guard p < 1 else { return }
                     for row in 0..<n {
                         let c = crownCentre(puzzle, row: row, inset: inset, cell: cell)
-                        for k in 0..<3 {
-                            let seed = Double(row * 3 + k)
+                        let tint = festival ? Theme.region(puzzle.regionOf[row * n + puzzle.solution[row]]) : Theme.gold
+                        for k in 0..<each {
+                            let seed = Double(row * each + k)
                             let start = hash(seed) * 0.35
                             let q = min(max((p - start) / 0.6, 0), 1)
                             guard q > 0 && q < 1 else { continue }
@@ -175,9 +180,12 @@ struct Lanterns: View {
                             let alpha = sin(.pi * q)
                             let halo = CGRect(x: x - r * 3, y: y - r * 3, width: r * 6, height: r * 6)
                             ctx.fill(Path(ellipseIn: halo), with: .radialGradient(
-                                Gradient(colors: [Theme.gold.opacity(0.45 * alpha), Theme.gold.opacity(0)]),
+                                Gradient(colors: [tint.opacity(0.45 * alpha), tint.opacity(0)]),
                                 center: CGPoint(x: x, y: y), startRadius: 0, endRadius: r * 3))
-                            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(Theme.gold.opacity(alpha)))
+                            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(tint.opacity(alpha)))
+                            if festival {
+                                ctx.stroke(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(Theme.goldDeep.opacity(alpha * 0.8)), lineWidth: 0.8)
+                            }
                             ctx.fill(Path(ellipseIn: CGRect(x: x - r * 0.4, y: y - r * 0.4, width: r * 0.8, height: r * 0.8)), with: .color(Theme.paper.opacity(alpha)))
                         }
                     }
@@ -185,7 +193,7 @@ struct Lanterns: View {
             } keyframes: { _ in
                 LinearKeyframe(1.0, duration: SolveTiming.lanterns(rows: n))
                 MoveKeyframe(0.0)
-                LinearKeyframe(1.0, duration: 3.4)
+                LinearKeyframe(1.0, duration: SolveTiming.lanternSpan(flourish))
             }
             .frame(width: side, height: side + headroom)
             // Lay out as the board's square and overflow upward, so the board frame keeps its size.
@@ -240,23 +248,118 @@ struct CrownGlints: View {
 
 // MARK: Ink drop
 
-/// A ring of ink spreads from a crown as it lands, like a drop on wet paper.
+/// A ring of ink spreads from a crown as it lands, like a drop on wet paper. `strength` (0 to 1, the
+/// share of crowns now placed) makes each drop spread wider and darker than the last.
 struct InkDrop: View {
     let trigger: Int
+    let strength: Double
     let cell: CGFloat
+
+    var body: some View {
+        let reach = 0.75 + 0.9 * strength
+        Color.clear
+            .keyframeAnimator(initialValue: 1.0, trigger: trigger) { _, p in
+                Circle()
+                    .stroke(Theme.ink.opacity((0.32 + 0.2 * strength) * (1 - p)), lineWidth: 0.6 + (1.6 + 1.2 * strength) * (1 - p))
+                    .frame(width: cell * (0.55 + reach * p), height: cell * (0.55 + reach * p))
+                    .opacity(p >= 1 ? 0 : 1)
+            } keyframes: { _ in
+                MoveKeyframe(0.0)
+                CubicKeyframe(1.0, duration: 0.5 + 0.2 * strength)
+            }
+            .frame(width: cell, height: cell)
+            .allowsHitTesting(false)
+    }
+}
+
+// MARK: Kingdom sealed
+
+/// When a kingdom is finished mid-puzzle, a small band of light passes across it, clipped to its border.
+struct KingdomSeal: View {
+    let puzzle: Puzzle
+    let region: Int
+    let trigger: Int
+    let delay: Double
+    let inset: CGFloat
+    let side: CGFloat
+
+    var body: some View {
+        let n = puzzle.size
+        let cell = (side - inset * 2) / CGFloat(n)
+        let cells = (0..<n * n).filter { puzzle.regionOf[$0] == region }
+        let xs = cells.map { inset + CGFloat($0 % n) * cell }
+        let left = (xs.min() ?? 0) - cell, right = (xs.max() ?? 0) + cell * 2
+        Color.clear
+            .keyframeAnimator(initialValue: 1.0, trigger: trigger) { _, p in
+                Canvas { ctx, size in
+                    guard p < 1 else { return }
+                    ctx.clip(to: RegionShape(puzzle: puzzle, region: region, inset: inset).path(in: CGRect(origin: .zero, size: size)))
+                    ctx.fill(RegionShape(puzzle: puzzle, region: region, inset: inset).path(in: CGRect(origin: .zero, size: size)),
+                             with: .color(Theme.region(region).opacity(0.3 * sin(.pi * p))))
+                    let x = left + (right - left) * p
+                    let band = Path(CGRect(x: x - cell * 0.5, y: -side, width: cell, height: side * 3))
+                        .applying(CGAffineTransform(translationX: -x, y: -side / 2).concatenating(.init(rotationAngle: .pi / 9)).concatenating(.init(translationX: x, y: side / 2)))
+                    ctx.fill(band, with: .linearGradient(
+                        Gradient(stops: [
+                            .init(color: .white.opacity(0), location: 0),
+                            .init(color: .white.opacity(0.7), location: 0.45),
+                            .init(color: Theme.gold.opacity(0.3), location: 0.55),
+                            .init(color: .white.opacity(0), location: 1),
+                        ]),
+                        startPoint: CGPoint(x: x - cell * 0.5, y: 0), endPoint: CGPoint(x: x + cell * 0.5, y: 0)))
+                }
+            } keyframes: { _ in
+                LinearKeyframe(1.0, duration: max(delay, 0.01))
+                MoveKeyframe(0.0)
+                CubicKeyframe(1.0, duration: 0.6)
+            }
+            .frame(width: side, height: side)
+            .allowsHitTesting(false)
+    }
+}
+
+// MARK: Comet
+
+/// Now and then a shooting star crosses the sky above the board after the lanterns go up.
+struct Comet: View {
+    let trigger: Int
+    let rows: Int
+    let side: CGFloat
+
+    /// Same headroom as the lanterns, so the star flies over the title.
+    private var headroom: CGFloat { side * 0.4 }
 
     var body: some View {
         Color.clear
             .keyframeAnimator(initialValue: 1.0, trigger: trigger) { _, p in
-                Circle()
-                    .stroke(Theme.ink.opacity(0.4 * (1 - p)), lineWidth: 0.6 + 2 * (1 - p))
-                    .frame(width: cell * (0.55 + 0.75 * p), height: cell * (0.55 + 0.75 * p))
-                    .opacity(p >= 1 ? 0 : 1)
+                Canvas { ctx, _ in
+                    guard p < 1 else { return }
+                    // From high on the left, arcing down to the right.
+                    func at(_ q: Double) -> CGPoint {
+                        CGPoint(x: side * (-0.05 + 1.1 * q), y: headroom * 0.15 + side * 0.32 * q * q)
+                    }
+                    let fade = min(1, (1 - p) * 4)
+                    for k in 0..<14 {
+                        let q = p - Double(k) * 0.018
+                        guard q > 0 else { continue }
+                        let c = at(q), r = side * 0.012 * (1 - Double(k) / 14)
+                        ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+                                 with: .color(Theme.gold.opacity(0.7 * (1 - Double(k) / 14) * fade)))
+                    }
+                    let head = at(p), s = side * 0.05
+                    ctx.translateBy(x: head.x, y: head.y)
+                    ctx.rotate(by: .radians(p * 8))
+                    let star = Sparkle().path(in: CGRect(x: -s / 2, y: -s / 2, width: s, height: s))
+                    ctx.fill(star, with: .color(Theme.gold.opacity(fade)))
+                    ctx.stroke(star, with: .color(Theme.goldDeep.opacity(fade)), lineWidth: 0.8)
+                }
             } keyframes: { _ in
+                LinearKeyframe(1.0, duration: SolveTiming.comet(rows: rows))
                 MoveKeyframe(0.0)
-                CubicKeyframe(1.0, duration: 0.5)
+                CubicKeyframe(1.0, duration: SolveTiming.cometFlight)
             }
-            .frame(width: cell, height: cell)
+            .frame(width: side, height: side + headroom)
+            .frame(width: side, height: side, alignment: .bottom)
             .allowsHitTesting(false)
     }
 }
