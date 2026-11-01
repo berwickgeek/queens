@@ -2,24 +2,31 @@ import SwiftUI
 
 struct GameView: View {
     @State private var game: GameModel
+    private let store: ProgressStore
     @Environment(Router.self) private var router
+    @Environment(Unlock.self) private var unlock
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.verticalSizeClass) private var vSize
     @State private var undoTick = 0
     @State private var hintTick = 0
     @State private var pinTick = 0
+    /// Play again was tapped with today's free solves used up; the limit card shows until unlocked.
+    @State private var againAsked = false
     /// Flips once the screen appears, so the board makes its entrance.
     @State private var entered = false
     @AppStorage(Haptics.soundKey) private var soundOn = true
 
     init(puzzle: Puzzle, store: ProgressStore) {
         _game = State(initialValue: GameModel(puzzle: puzzle, store: store))
+        self.store = store
     }
 
     var body: some View {
         Group {
-            if wide {
+            if locked {
+                LimitCard(puzzle: game.puzzle)
+            } else if wide {
                 // iPad, landscape: board on the left, everything else in a column beside it.
                 HStack(spacing: 32) {
                     BoardView(game: game, entered: entered)
@@ -62,16 +69,35 @@ struct GameView: View {
         }
         .onAppear {
             Haptics.shared.prepare()
-            game.resume()
-            if !entered { enter() }
+            if !locked {
+                game.resume()
+                if !entered { enter() }
+            }
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "autosolve") { game.debugSolve() }
             #endif
         }
-        .onDisappear { game.pause() }
+        .onDisappear { if !locked { game.pause() } }
         .onChange(of: scenePhase) { _, phase in
+            guard !locked else { return }
             if phase == .active { game.resume() } else { game.pause() }
         }
+        .onChange(of: locked) { _, now in
+            guard !now else { return }
+            if againAsked {
+                againAsked = false
+                playAgain()
+            } else {
+                game.resume()
+                if !entered { enter() }
+            }
+        }
+    }
+
+    /// A fresh start (or Play again) waits once today's free solves are used up;
+    /// a puzzle already under way can always be finished.
+    private var locked: Bool {
+        unlock.blocks(store) && (againAsked || !store.record(game.puzzle.id).started)
     }
 
     /// The board's entrance, with its sound and haptic when there is a puzzle to play.
@@ -159,7 +185,9 @@ struct GameView: View {
             let fresh = !game.gilded || game.solveTrigger > 0
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
-                    Button("Play again") { playAgain() }
+                    Button("Play again") {
+                        if unlock.blocks(store) { againAsked = true } else { playAgain() }
+                    }
                         .buttonStyle(PillButtonStyle())
                     if let next = PuzzleLibrary.shared.next(after: game.puzzle) {
                         Button("Next puzzle") { router.replaceLast(with: .puzzle(next.id)) }

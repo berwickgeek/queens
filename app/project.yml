@@ -17,6 +17,7 @@ targets:
     scheme:
       testTargets:
         - QueensTests
+      storeKitConfiguration: Queens.storekit
     entitlements:
       path: Queens/Queens.entitlements
       properties:
@@ -59,3 +60,6 @@ targets:
       - path: QueensTests
     dependencies:
       - target: Queens
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES

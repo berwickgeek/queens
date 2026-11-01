@@ -30,6 +30,7 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Province map | `Views/ProvinceMapView.swift`, `Atlas/ProvinceSheet.swift`, `Atlas/ProvinceGeometry.swift` | Same split as the realm map: terrain cached per province off the main thread, road, stops and castle live. A clear 44pt NavigationLink per stop carries the tap and the accessibility label; the sheet opens on the leg's end or the current stop with `.defaultScrollAnchor`, as on the realm map |
 | Travel (journey animation) | `Atlas/Travel.swift`, `ProvinceSheet.pieces`, `Travel` in `Model/SolveTiming.swift` | The live sheet leaves out the leg (`live(travelling:)`); `TravelOverlay` draws those pieces from the same per-piece seeds and moves them on one `keyframeAnimator` clock, so its last frame matches the plain sheet and the overlay can be removed without a jump. Mount with trigger 0, bump a frame later. Haptics read the same `Travel` windows |
 | Slim map card | `Views/RealmMapView.swift` SlimMapCard(caption:puzzle:) | Paper capsule in `.safeAreaInset(edge: .bottom)` with an ink Continue capsule; used on both maps instead of ContinueCard, each passing its own caption |
+| Daily limit and unlock | `Model/Unlock.swift`, `Views/LimitCard.swift`, gate in `Views/GameView.swift` `locked` | StoreKit 2 non-consumable `cc.jaym.queens.unlock`; `app/Queens.storekit` drives the simulator. Only fresh starts and Play again are gated, never hints, Pin or a puzzle under way. DEBUG launch arg `-dailyLimit YES` forces the card |
 | Progress sync | `Model/ProgressStore.swift` | Local file first, mirrored to iCloud key-value store as one `p.<id>` key per puzzle; merge with `PuzzleRecord.merged`. Writes batch for 2s and flush on background; pull on foreground |
 
 ## New patterns log
@@ -49,3 +50,4 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Journey travel (the seal walks the last leg on the province map, ink creeps up, the new name is written on) and "To the map" on a solved puzzle, because playing a puzzle should move the traveller across the map.
 - Province crop on the Home realm cards in place of the first unsolved puzzle's mini board, so Home shows where the traveller is on the journey.
 - Wax seal app icon in place of the board-and-crown icon, because the app was renamed Crowns and the board tiles blurred into colour at home-screen size.
+- Daily limit (five solves a day after the first ten) and a one-time unlock, because Jay chose a free tier plus one purchase over ads or paid hints.
