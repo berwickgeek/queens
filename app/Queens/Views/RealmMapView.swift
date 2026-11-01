@@ -14,39 +14,36 @@ struct RealmMapView: View {
         let states = Journey.stopStates(solved: store.solvedFlags(size: size))
         let provinces = Journey.provinceStates(states)
         let current = states.firstIndex(of: .current)
-        ScrollViewReader { proxy in
-            ScrollView {
-                ZStack {
-                    if let terrain {
-                        AtlasSheet(pencil: terrain.pencil, ink: terrain.ink, height: L.realmHeight,
-                                   boundary: RealmSheet.boundary(size: size, states: states))
-                    } else {
-                        AtlasPaper()
-                    }
-                    AtlasCanvas(drawing: RealmSheet.live(size: size, states: states), height: L.realmHeight)
-                    bands(provinces, states: states)
+        ScrollView {
+            ZStack {
+                if let terrain {
+                    AtlasSheet(pencil: terrain.pencil, ink: terrain.ink, height: L.realmHeight,
+                               boundary: RealmSheet.boundary(size: size, states: states))
+                } else {
+                    AtlasPaper()
                 }
-                .aspectRatio(L.width / L.realmHeight, contentMode: .fit)
+                AtlasCanvas(drawing: RealmSheet.live(size: size, states: states), height: L.realmHeight)
+                bands(provinces, states: states)
+            }
+            .aspectRatio(L.width / L.realmHeight, contentMode: .fit)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
+        }
+        // Opens on the current province. scrollTo cannot find the bands inside their GeometryReader.
+        .defaultScrollAnchor(UnitPoint(x: 0.5, y: focus(current)))
+        .background(Theme.Atlas.paper)
+        .safeAreaInset(edge: .bottom) {
+            if let current {
+                let province = Journey.Province(size: size, index: current / Journey.stopsPerProvince)
+                NavigationLink(value: Route.puzzle(puzzles[current].id)) {
+                    let solved = states[province.numbers.lowerBound - 1 ..< min(states.count, province.numbers.upperBound)]
+                        .filter { $0 == .solved }.count
+                    SlimMapCard(caption: "\(province.name) · \(solved) of \(Journey.stopsPerProvince)", puzzle: puzzles[current])
+                }
+                .buttonStyle(PressableStyle())
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
                 .frame(maxWidth: 640)
-                .frame(maxWidth: .infinity)
-            }
-            .background(Theme.Atlas.paper)
-            .safeAreaInset(edge: .bottom) {
-                if let current {
-                    let province = Journey.Province(size: size, index: current / Journey.stopsPerProvince)
-                    NavigationLink(value: Route.puzzle(puzzles[current].id)) {
-                        let solved = states[province.numbers.lowerBound - 1 ..< min(states.count, province.numbers.upperBound)]
-                            .filter { $0 == .solved }.count
-                        SlimMapCard(caption: "\(province.name) · \(solved) of \(Journey.stopsPerProvince)", puzzle: puzzles[current])
-                    }
-                    .buttonStyle(PressableStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: 640)
-                }
-            }
-            .onAppear {
-                if let current { proxy.scrollTo(current / Journey.stopsPerProvince, anchor: .center) }
             }
         }
         .task { terrain = await RealmSheet.terrain(size: size) }
@@ -64,7 +61,13 @@ struct RealmMapView: View {
         }
     }
 
-    /// A clear tap target over each province's band, which also anchors the scroll.
+    /// The current province's band centre as a fraction of the sheet height, for the opening scroll.
+    private func focus(_ current: Int?) -> CGFloat {
+        guard let current else { return 1 }
+        return (L.bandBottom(current / Journey.stopsPerProvince) - L.band / 2) / L.realmHeight
+    }
+
+    /// A clear tap target over each province's band.
     private func bands(_ provinces: [Journey.ProvinceState], states: [Journey.StopState]) -> some View {
         GeometryReader { geo in
             let k = geo.size.width / L.width
@@ -75,7 +78,6 @@ struct RealmMapView: View {
                 .buttonStyle(.plain)
                 .frame(width: geo.size.width, height: L.band * k)
                 .position(x: geo.size.width / 2, y: (L.bandBottom(i) - L.band / 2) * k)
-                .id(i)
                 .accessibilityLabel(label(i, state: provinces[i], states: states))
             }
         }

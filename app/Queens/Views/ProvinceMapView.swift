@@ -30,51 +30,50 @@ struct ProvinceMapView: View {
         let shown = leg != nil && !arrived ? Journey.stopStates(solved: walkBack(store.solvedFlags(size: province.size), range: range)) : realmStates
         let next = nextPuzzle(all, realmStates: shown, range: range)
         let solved = states.filter { $0 == .solved }.count - (leg?.from != nil && !arrived ? 1 : 0)
-        ScrollViewReader { proxy in
-            ScrollView {
-                ZStack {
-                    if let terrain {
-                        AtlasSheet(pencil: terrain.pencil, ink: terrain.ink, height: L.provinceHeight,
-                                   boundary: ProvinceSheet.boundary(province, states: leg.map { inked ? states : $0.before(states) } ?? states))
-                            .animation(inked ? .easeInOut(duration: Travel.ink.upperBound - Travel.ink.lowerBound).delay(Travel.ink.lowerBound) : nil, value: inked)
-                    } else {
-                        AtlasPaper()
-                    }
-                    AtlasCanvas(drawing: ProvinceSheet.live(province, states: states, travelling: leg), height: L.provinceHeight)
-                    if let leg {
-                        TravelOverlay(pieces: ProvinceSheet.pieces(province, count: states.count, leg: leg),
-                                      trigger: travelTrigger, height: L.provinceHeight)
-                    }
-                    stopButtons(puzzles, states: states)
+        ScrollView {
+            ZStack {
+                if let terrain {
+                    AtlasSheet(pencil: terrain.pencil, ink: terrain.ink, height: L.provinceHeight,
+                               boundary: ProvinceSheet.boundary(province, states: leg.map { inked ? states : $0.before(states) } ?? states))
+                        .animation(inked ? .easeInOut(duration: Travel.ink.upperBound - Travel.ink.lowerBound).delay(Travel.ink.lowerBound) : nil, value: inked)
+                } else {
+                    AtlasPaper()
                 }
-                .aspectRatio(L.width / L.provinceHeight, contentMode: .fit)
+                AtlasCanvas(drawing: ProvinceSheet.live(province, states: states, travelling: leg), height: L.provinceHeight)
+                if let leg {
+                    TravelOverlay(pieces: ProvinceSheet.pieces(province, count: states.count, leg: leg),
+                                  trigger: travelTrigger, height: L.provinceHeight)
+                }
+                stopButtons(puzzles, states: states)
+            }
+            .aspectRatio(L.width / L.provinceHeight, contentMode: .fit)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Theme.Atlas.paper)
+        .safeAreaInset(edge: .bottom) {
+            if let next {
+                NavigationLink(value: Route.puzzle(next.id)) {
+                    SlimMapCard(caption: "No. \(next.number) · \(Journey.province(of: next).name)", puzzle: next)
+                        .id(next.id)
+                        .transition(.opacity)
+                }
+                .buttonStyle(PressableStyle())
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
                 .frame(maxWidth: 640)
-                .frame(maxWidth: .infinity)
-            }
-            .background(Theme.Atlas.paper)
-            .safeAreaInset(edge: .bottom) {
-                if let next {
-                    NavigationLink(value: Route.puzzle(next.id)) {
-                        SlimMapCard(caption: "No. \(next.number) · \(Journey.province(of: next).name)", puzzle: next)
-                            .id(next.id)
-                            .transition(.opacity)
-                    }
-                    .buttonStyle(PressableStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: 640)
-                }
-            }
-            .onAppear {
-                if store.solvedCount(size: province.size) > store.journeySeenCount(size: province.size) {
-                    store.markJourneySeen(size: province.size)
-                    if !reduceMotion { leg = ProvinceGeometry.leg(states) }
-                }
-                let focus = leg.map { $0.to ?? states.count - 1 } ?? states.firstIndex(of: .current) ?? states.firstIndex(of: .skipped) ?? 0
-                proxy.scrollTo(focus, anchor: .center)
-                if terrain != nil { travel() }
             }
         }
+        .onAppear {
+            // Only a province the traveller walks into uses up the unseen solves.
+            if let walk = unwalked(states) {
+                store.markJourneySeen(size: province.size)
+                if !reduceMotion { leg = walk }
+            }
+            if terrain != nil { travel() }
+        }
+        // Opens on the leg's end or the current stop. scrollTo cannot find the stop buttons inside their GeometryReader.
+        .defaultScrollAnchor(UnitPoint(x: 0.5, y: L.provinceStop(province, focus(states)).y / L.provinceHeight))
         .task {
             terrain = await ProvinceSheet.terrain(province)
             travel()
@@ -119,6 +118,18 @@ struct ProvinceMapView: View {
         return f
     }
 
+    /// The leg still to walk on this province, if solves have landed since the map was last seen.
+    private func unwalked(_ states: [Journey.StopState]) -> ProvinceGeometry.Leg? {
+        guard store.solvedCount(size: province.size) > store.journeySeenCount(size: province.size) else { return nil }
+        return ProvinceGeometry.leg(states)
+    }
+
+    /// The stop the map opens on: the end of the leg to walk, else the current or first skipped stop.
+    private func focus(_ states: [Journey.StopState]) -> Int {
+        if let walk = leg ?? unwalked(states) { return walk.to ?? states.count - 1 }
+        return states.firstIndex(of: .current) ?? states.firstIndex(of: .skipped) ?? 0
+    }
+
     /// The card's puzzle: this province's current or first skipped stop, else the realm's current.
     private func nextPuzzle(_ all: [Puzzle], realmStates: [Journey.StopState], range: Range<Int>) -> Puzzle? {
         let here = realmStates[range]
@@ -126,7 +137,7 @@ struct ProvinceMapView: View {
         return i.map { all[$0] }
     }
 
-    /// A clear 44pt button over each stop, which also carries its accessibility label and anchors the scroll.
+    /// A clear 44pt button over each stop, which also carries its accessibility label.
     private func stopButtons(_ puzzles: [Puzzle], states: [Journey.StopState]) -> some View {
         GeometryReader { geo in
             let k = geo.size.width / L.width
@@ -138,7 +149,6 @@ struct ProvinceMapView: View {
                 .buttonStyle(.plain)
                 .frame(width: 44, height: 44)
                 .position(x: p.x * k, y: p.y * k)
-                .id(j)
                 .accessibilityLabel(label(puzzles[j], state: states[j]))
             }
         }
