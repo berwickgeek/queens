@@ -1,68 +1,94 @@
-"""Writes the asset catalog: a 1024px app icon (watercolour kingdoms and an ink crown) and the Paper colour."""
+"""Writes the asset catalog: a 1024px app icon (a red wax seal pressed with the crown, on atlas
+paper, the mark of the current stop on the journey maps) and the Paper colour."""
 import json
+import math
 import random
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent / "app/Queens/Assets.xcassets"
-INK = (42, 52, 70)
-PAPER = (251, 252, 253)
-PIGMENTS = [0xA8CBE0, 0xF2C58A, 0xB9D9A3, 0xE9A9A1, 0xCBB8DE]
-REGIONS = ["aabbb", "aabcc", "dddcc", "deeec", "deeee"]
 S = 1024
-N = 5
+X = 4  # drawn at 4x, then downsampled
+SS = S * X
+
+# Theme.Atlas and Theme.wax.
+ATLAS_PAPER = (245, 236, 215)
+ATLAS_SHADE = (217, 193, 147)
+WAX = (156, 47, 60)
+WAX_DEEP = (110, 31, 42)
+WAX_LIT = (184, 66, 78)
+SEAL_RING = (196, 138, 30)
+SEAL_MARK = (251, 243, 230)
 
 
-def rgb(h):
-    return ((h >> 16) & 255, (h >> 8) & 255, h & 255)
+def paper(seed):
+    """Atlas paper with soft blotches toward the edges, like the map sheet's vignette."""
+    img = Image.new("RGB", (SS, SS), ATLAS_PAPER)
+    rnd = random.Random(seed)
+    blot = Image.new("L", (SS, SS), 0)
+    d = ImageDraw.Draw(blot)
+    for _ in range(14):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = rnd.uniform(0.42, 0.62) * SS
+        x, y = SS / 2 + math.cos(a) * r, SS / 2 + math.sin(a) * r
+        k = rnd.uniform(0.18, 0.32) * SS
+        d.ellipse([x - k, y - k, x + k, y + k], fill=rnd.randint(40, 90))
+    blot = blot.filter(ImageFilter.GaussianBlur(SS * 0.06))
+    return Image.composite(Image.new("RGB", (SS, SS), ATLAS_SHADE), img, blot)
+
+
+def blob(cx, cy, r, seed, amp=0.035, n=180):
+    """A circle with a wavering edge, as wax spreads."""
+    rnd = random.Random(seed)
+    ph = [rnd.uniform(0, 2 * math.pi) for _ in range(4)]
+    pts = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        k = 1 + amp * (0.6 * math.sin(3 * t + ph[0]) + 0.3 * math.sin(5 * t + ph[1])
+                       + 0.25 * math.sin(8 * t + ph[2]) + 0.15 * math.sin(13 * t + ph[3]))
+        pts.append((cx + r * k * math.cos(t), cy + r * k * math.sin(t)))
+    return pts
+
+
+def crown(d, cx, cy, w, fill, hole=None):
+    """The app's crown on its 24-unit grid, centred and `w` wide."""
+    s = w / 18
+    ox, oy = cx - 12 * s, cy - 13.5 * s
+    pt = lambda x, y: (ox + x * s, oy + y * s)
+    d.polygon([pt(3, 18), pt(4.5, 7.5), pt(9, 12), pt(12, 5), pt(15, 12), pt(19.5, 7.5), pt(21, 18)], fill=fill)
+    d.rounded_rectangle([pt(3, 19.4), pt(21, 22)], radius=int(1.2 * s), fill=fill)
+    for x, y in [(4.5, 7.5), (12, 5), (19.5, 7.5)]:
+        (jx, jy), r = pt(x, y), 1.9 * s
+        d.ellipse([jx - r, jy - r, jx + r, jy + r], fill=fill)
+        if hole:
+            d.ellipse([jx - r * 0.42, jy - r * 0.42, jx + r * 0.42, jy + r * 0.42], fill=hole)
 
 
 def icon():
-    img = Image.new("RGB", (S, S), PAPER)
-    cell = S / N
-    wash = Image.new("RGB", (S, S), PAPER)
-    d = ImageDraw.Draw(wash)
-    for r in range(N):
-        for c in range(N):
-            g = ord(REGIONS[r][c]) - 97
-            d.rectangle([c * cell, r * cell, (c + 1) * cell + 1, (r + 1) * cell + 1], fill=rgb(PIGMENTS[g]))
-    # Granulation: speckle then soften.
-    rnd = random.Random(7)
-    px = wash.load()
-    for _ in range(60000):
-        x, y = rnd.randrange(S), rnd.randrange(S)
-        k = rnd.uniform(0.9, 1.06)
-        p = px[x, y]
-        px[x, y] = tuple(min(255, int(v * k)) for v in p)
-    wash = wash.filter(ImageFilter.GaussianBlur(2.2))
-    img.paste(wash)
-
+    img = paper(3)
+    c, r = SS / 2, SS * 0.36
+    shadow = Image.new("L", (SS, SS), 0)
+    ImageDraw.Draw(shadow).polygon(blob(c + SS * 0.012, c + SS * 0.022, r * 1.02, 11), fill=110)
+    img = Image.composite(Image.new("RGB", (SS, SS), (120, 80, 50)), img, shadow.filter(ImageFilter.GaussianBlur(SS * 0.02)))
+    # Wax lit from the top left.
+    light = Image.radial_gradient("L").resize((int(r * 3.8), int(r * 3.8)))
+    falloff = Image.new("L", (SS, SS), 255)
+    falloff.paste(light, (int(c - r * 0.35 - r * 1.9), int(c - r * 0.4 - r * 1.9)))
+    wax = Image.composite(Image.new("RGB", (SS, SS), WAX_DEEP), Image.new("RGB", (SS, SS), WAX_LIT), falloff)
+    mask = Image.new("L", (SS, SS), 0)
+    ImageDraw.Draw(mask).polygon(blob(c, c, r, 11), fill=255)
+    img = Image.composite(wax, img, mask)
     d = ImageDraw.Draw(img)
-    for k in range(1, N):
-        o = k * cell
-        d.line([(o, 0), (o, S)], fill=(190, 196, 206), width=3)
-        d.line([(0, o), (S, o)], fill=(190, 196, 206), width=3)
-    for r in range(N):
-        for c in range(N):
-            g = REGIONS[r][c]
-            if c + 1 < N and REGIONS[r][c + 1] != g:
-                d.line([((c + 1) * cell, r * cell), ((c + 1) * cell, (r + 1) * cell)], fill=INK, width=14)
-            if r + 1 < N and REGIONS[r + 1][c] != g:
-                d.line([(c * cell, (r + 1) * cell), ((c + 1) * cell, (r + 1) * cell)], fill=INK, width=14)
-
-    # Crown in the centre cell, enlarged across it.
-    s = cell * 1.5 / 24
-    ox, oy = S / 2 - 12 * s, S / 2 - 13 * s
-    pt = lambda x, y: (ox + x * s, oy + y * s)
-    halo = [pt(1, 1.5), pt(23, 24.5)]
-    d.rounded_rectangle(halo, radius=int(4 * s), fill=PAPER, outline=INK, width=10)
-    d.polygon([pt(3, 18), pt(4.5, 7.5), pt(9, 12), pt(12, 5), pt(15, 12), pt(19.5, 7.5), pt(21, 18)], fill=INK)
-    d.rounded_rectangle([pt(3, 19.2), pt(21, 21.8)], radius=int(1.2 * s), fill=INK)
-    for x, y in [(4.5, 7.5), (12, 5), (19.5, 7.5)]:
-        d.ellipse([pt(x - 1.9, y - 1.9), pt(x + 1.9, y + 1.9)], fill=INK)
-        d.ellipse([pt(x - 0.8, y - 0.8), pt(x + 0.8, y + 0.8)], fill=PAPER)
-    return img
+    # The pressed rim: a groove, then the gold ring of the map's seals.
+    g = r * 0.80
+    d.ellipse([c - g, c - g, c + g, c + g], outline=WAX_DEEP, width=int(SS * 0.018))
+    g = r * 0.74
+    d.ellipse([c - g, c - g, c + g, c + g], outline=SEAL_RING, width=int(SS * 0.014))
+    # The crown with a shadow under it, so it reads as pressed into the wax.
+    crown(d, c + SS * 0.006, c + SS * 0.01, SS * 0.40, WAX_DEEP)
+    crown(d, c, c, SS * 0.40, SEAL_MARK, hole=WAX)
+    return img.resize((S, S), Image.LANCZOS)
 
 
 def main():

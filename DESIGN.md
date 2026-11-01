@@ -62,6 +62,8 @@ The person is Jay, playing one-handed on his iPhone in short sessions, picking u
 
 The memorable element is the board itself: watercolour washes that deepen as kingdoms receive their queen, under a pencil grid and inked borders.
 
+The app icon is the journey maps' seal: red wax (`wax`, lit top left) with the gold `sealRing` and a cream crown pressed in, on atlas paper. It is drawn by `tools/make_assets.py`. One mark, no board, so it still reads at 40pt.
+
 ## Colors
 ### Brand & Accent
 `primary` (ink, #2a3446) is the only accent. It draws borders, crowns, titles and the filled button. Contrast on `surface`: 12.0:1.
