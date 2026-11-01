@@ -78,10 +78,11 @@ struct AtlasSketch {
     }
 
     /// A pen line through `p`. `width` is relative to the pen; `wander` overrides how far the
-    /// line strays (small shapes like castles use 0.3 so they stay legible).
+    /// line strays (small shapes like castles use 0.3 so they stay legible). `dashed` breaks it
+    /// like a pressed nib; `dash` sets a fixed pattern instead, as on a province border.
     mutating func line(_ p: [CGPoint], width: CGFloat = 1, opacity: Double = 1, color: Color? = nil,
                        wander: CGFloat? = nil, closed: Bool = false, fill: Color? = nil,
-                       press: Bool = true, dashed: Bool = false) {
+                       press: Bool = true, dashed: Bool = false, dash: [CGFloat]? = nil) {
         guard p.count > 1 else { return }
         let w = width * (pencil ? Theme.Atlas.pencilWidth : Theme.Atlas.penWidth)
         let amp = wander ?? (pencil ? Theme.Atlas.pencilWander : Theme.Atlas.penWander)
@@ -90,9 +91,9 @@ struct AtlasSketch {
         let path = Path.polyline(AtlasGeometry.jitter(points, amp: amp, closed: closed, noise: noise(), rng: &rng), closed: closed)
         if let fill { drawing.ink.append(.fill(path, fill)) }
         var style = StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round)
-        if dashed { style.dash = AtlasGeometry.pressDashes(rng: &rng) }
+        if let dash { style.dash = dash } else if dashed { style.dash = AtlasGeometry.pressDashes(rng: &rng) }
         drawing.ink.append(.stroke(path, colour, style))
-        if press && !dashed && !pencil && w > 0.5 {
+        if press && !dashed && dash == nil && !pencil && w > 0.5 {
             let pressed = StrokeStyle(lineWidth: w * 1.9, lineCap: .round, dash: AtlasGeometry.pressDashes(rng: &pressRng))
             drawing.ink.append(.stroke(path, colour.opacity(0.55), pressed))
         }

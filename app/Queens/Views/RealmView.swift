@@ -2,12 +2,15 @@ import SwiftUI
 
 struct RealmView: View {
     let size: Int
+    /// Shows only this province's puzzles, standing in for the province map.
+    var province: Int? = nil
     @Environment(ProgressStore.self) private var store
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
 
     var body: some View {
-        let puzzles = PuzzleLibrary.shared.puzzles(size)
+        let all = PuzzleLibrary.shared.puzzles(size)
+        let puzzles = province.map { p in all.filter { Journey.Province(size: size, index: p).numbers.contains($0.number) } } ?? all
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 12) {
@@ -24,13 +27,13 @@ struct RealmView: View {
                 .frame(maxWidth: .infinity)
             }
             .onAppear {
-                if let first = store.firstUnsolved(size: size) {
+                if let first = puzzles.first(where: { store.records[$0.id]?.solvedOnce != true }) {
                     proxy.scrollTo(first.id, anchor: .center)
                 }
             }
         }
         .background(PaperBackground())
-        .navigationTitle(Naming.realm(size).name)
+        .navigationTitle(province.map { Naming.province(size: size, index: $0) } ?? Naming.realm(size).name)
         .navigationBarTitleDisplayMode(.inline)
     }
 }
