@@ -55,4 +55,51 @@ final class ProvinceGeometryTests: XCTestCase {
         states = [Journey.StopState](repeating: .ahead, count: 20)
         XCTAssertGreaterThan(P.boundary(province, states: states), Journey.Layout.provinceHeight)
     }
+
+    // MARK: Travel
+
+    private func states(solved: Int, count: Int = 20) -> [Journey.StopState] {
+        (0..<count).map { $0 < solved ? .solved : $0 == solved ? .current : .ahead }
+    }
+
+    func testLeg() {
+        XCTAssertEqual(P.leg(states(solved: 5)), P.Leg(from: 4, to: 5))
+        XCTAssertEqual(P.leg(states(solved: 0)), P.Leg(from: nil, to: 0))
+        XCTAssertEqual(P.leg([Journey.StopState](repeating: .solved, count: 20)), P.Leg(from: 19, to: nil))
+        XCTAssertNil(P.leg([Journey.StopState](repeating: .ahead, count: 20)))
+        // A skipped stop just before the current one: nothing was walked onto this stop.
+        var s = states(solved: 5)
+        s[4] = .skipped
+        XCTAssertEqual(P.leg(s), P.Leg(from: nil, to: 5))
+    }
+
+    func testBeforeUndoesTheLeg() {
+        XCTAssertEqual(P.Leg(from: 4, to: 5).before(states(solved: 5)), states(solved: 4))
+        XCTAssertEqual(P.Leg(from: nil, to: 0).before(states(solved: 0)), [Journey.StopState](repeating: .ahead, count: 20))
+        XCTAssertEqual(P.Leg(from: 19, to: nil).before([Journey.StopState](repeating: .solved, count: 20)), states(solved: 19))
+    }
+
+    func testPathRunsStopToStop() {
+        for province in everyProvince {
+            let stops = P.stops(province)
+            let path = P.path(P.Leg(from: 6, to: 7), stops: stops)
+            XCTAssertEqual(path.count, 9)
+            XCTAssertEqual(path.first, stops[6])
+            XCTAssertEqual(path.last, stops[7])
+            let end = P.path(P.Leg(from: 19, to: nil), stops: stops)
+            XCTAssertEqual(end.first, stops[19])
+            XCTAssertEqual(end.last.map { hypot($0.x - P.castle(stops).x, $0.y - P.castle(stops).y) } ?? .infinity, 0, accuracy: 0.001)
+            XCTAssertTrue(P.path(P.Leg(from: nil, to: 0), stops: stops).isEmpty)
+        }
+    }
+
+    func testTravelClock() {
+        XCTAssertEqual(Travel.progress(0, Travel.walk), 0)
+        XCTAssertEqual(Travel.progress(Travel.total, Travel.walk), 1)
+        XCTAssertEqual(Travel.easeInOut(0.5), 0.5, accuracy: 0.0001)
+        for k in 0..<Travel.steps {
+            XCTAssertTrue(Travel.walk.contains(Travel.step(k)))
+        }
+        XCTAssertLessThanOrEqual(Travel.name.upperBound, Travel.total)
+    }
 }

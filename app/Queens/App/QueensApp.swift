@@ -20,6 +20,11 @@ final class Router {
     func replaceLast(with route: Route) {
         if path.isEmpty { path = [route] } else { path[path.count - 1] = route }
     }
+
+    /// Back to the puzzle's province map, with the realm map behind it, however the puzzle was opened.
+    func toMap(of puzzle: Puzzle) {
+        path = Array(Route.path(to: puzzle).dropLast())
+    }
 }
 
 @main

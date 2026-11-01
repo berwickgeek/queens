@@ -134,6 +134,9 @@ struct AtlasSketch {
         drawing.ink.append(.fill(path, color))
     }
 
+    /// Another sketch's drawing on top of this one, for pieces drawn from their own seed.
+    mutating func append(_ other: AtlasDrawing) { drawing.append(other) }
+
     /// A place name. `at` is the baseline point, as in SVG; names tilt up to 2.5 degrees either
     /// way unless `rotation` is given.
     mutating func label(_ text: String, at: CGPoint, size: CGFloat = 9.5, italic: Bool = false,
