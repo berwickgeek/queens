@@ -80,7 +80,7 @@ enum ProvinceSheet {
     /// While `leg` is being walked, its road and both its stops are left out for `TravelOverlay`
     /// to draw. Each road segment, stop and the castle draws from its own seed, so the overlay's
     /// pieces match this drawing exactly once the leg is walked.
-    static func live(_ province: Journey.Province, states: [Journey.StopState], travelling leg: P.Leg? = nil) -> AtlasDrawing {
+    static func live(_ province: Journey.Province, states: [Journey.StopState], travelling leg: ProvinceGeometry.Leg? = nil) -> AtlasDrawing {
         var s = AtlasSketch(seed: seed(province) + 50)
         let stops = P.stops(province, count: states.count)
         guard !stops.isEmpty else { return s.drawing }
@@ -153,7 +153,7 @@ enum ProvinceSheet {
         var castle: AtlasDrawing?
     }
 
-    static func pieces(_ province: Journey.Province, count: Int, leg: P.Leg) -> TravelPieces {
+    static func pieces(_ province: Journey.Province, count: Int, leg: ProvinceGeometry.Leg) -> TravelPieces {
         let stops = P.stops(province, count: count)
         var p = TravelPieces()
         if let from = leg.from {
