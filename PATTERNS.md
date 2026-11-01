@@ -8,7 +8,8 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Pill button | `Views/Components.swift` PillButtonStyle | `prominent: true` for the one primary action |
 | Crown tally | `Views/Components.swift` CrownTally | One pencil outline per kingdom, inked as crowns go down; game header |
 | Difficulty | `Views/Components.swift` TierDots | |
-| Puzzle thumbnail | `Views/Components.swift` MiniBoard | Canvas, no shaders |
+| Puzzle thumbnail | `Views/Components.swift` MiniBoard | Canvas, no shaders. Used by ContinueCard; realm cards use ProvinceCrop |
+| Map thumbnail | `Atlas/ProvinceCrop.swift` ProvinceCrop | A clipped window onto the live province sheet, not a separate drawing. Reuse it for any small map view |
 | Board | `Board/BoardView.swift` | Wash, pencil grid, ink borders, marks, in that z-order |
 | Celebration banner | `Views/Components.swift` SolvedBanner / Ribbon | Gold crown stamp on top |
 | Solve celebration | `Board/BoardView.swift` SparkleBurst, Sheen, InkLayer gilding | Every delay comes from `Model/SolveTiming.swift` so haptics and visuals land together |
@@ -44,3 +45,4 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Realm map (one scrolling sheet of twelve province bands, inked to the traveller) and the slim map card, because the full ContinueCard hides a province band.
 - Province map (twenty named stops to a castle) in place of the puzzle grid, so every puzzle is a place on the journey; the grid tile pattern is retired.
 - Journey travel (the seal walks the last leg on the province map, ink creeps up, the new name is written on) and "To the map" on a solved puzzle, because playing a puzzle should move the traveller across the map.
+- Province crop on the Home realm cards in place of the first unsolved puzzle's mini board, so Home shows where the traveller is on the journey.

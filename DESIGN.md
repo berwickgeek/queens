@@ -152,6 +152,8 @@ Difficulty shows as 1 to 5 small ink dots (`TierDots`) in the game header.
 
 **Slim map card.** On the realm and province maps the continue card is a slim pill pinned above the home indicator: a caption in muted sans (province and count on the realm map, puzzle number and province on the province map), the puzzle name in serif, and an ink "Continue" capsule. It replaces the full ContinueCard there because that card would hide most of a province band.
 
+**Province crop.** Each realm card on Home shows a 92pt square window onto the realm's current province (`Atlas/ProvinceCrop.swift`), centred on the current stop, or on the castle once the realm is finished, with a 12pt radius and 1pt border. It draws the province sheet exactly as the province map does and clips it, so the card and the map always agree. Paper shows until the cached terrain is ready. Hidden from VoiceOver; the card's text carries the meaning.
+
 ## Do's and Don'ts
 ### Do
 - Keep the board the largest thing on screen.
