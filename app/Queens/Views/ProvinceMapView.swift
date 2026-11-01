@@ -17,37 +17,33 @@ struct ProvinceMapView: View {
         let puzzles = Array(all[range])
         let states = Array(realmStates[range])
         let next = nextPuzzle(all, realmStates: realmStates, range: range)
-        ScrollViewReader { proxy in
-            ScrollView {
-                ZStack {
-                    if let terrain {
-                        AtlasSheet(pencil: terrain.pencil, ink: terrain.ink, height: L.provinceHeight,
-                                   boundary: ProvinceSheet.boundary(province, states: states))
-                    } else {
-                        AtlasPaper()
-                    }
-                    AtlasCanvas(drawing: ProvinceSheet.live(province, states: states), height: L.provinceHeight)
-                    stopButtons(puzzles, states: states)
+        ScrollView {
+            ZStack {
+                if let terrain {
+                    AtlasSheet(pencil: terrain.pencil, ink: terrain.ink, height: L.provinceHeight,
+                               boundary: ProvinceSheet.boundary(province, states: states))
+                } else {
+                    AtlasPaper()
                 }
-                .aspectRatio(L.width / L.provinceHeight, contentMode: .fit)
+                AtlasCanvas(drawing: ProvinceSheet.live(province, states: states), height: L.provinceHeight)
+                stopButtons(puzzles, states: states)
+            }
+            .aspectRatio(L.width / L.provinceHeight, contentMode: .fit)
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
+        }
+        // Opens on the current stop. scrollTo cannot find the stop buttons inside their GeometryReader.
+        .defaultScrollAnchor(UnitPoint(x: 0.5, y: L.provinceStop(province, focus(states)).y / L.provinceHeight))
+        .background(Theme.Atlas.paper)
+        .safeAreaInset(edge: .bottom) {
+            if let next {
+                NavigationLink(value: Route.puzzle(next.id)) {
+                    SlimMapCard(caption: "No. \(next.number) · \(Journey.province(of: next).name)", puzzle: next)
+                }
+                .buttonStyle(PressableStyle())
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
                 .frame(maxWidth: 640)
-                .frame(maxWidth: .infinity)
-            }
-            .background(Theme.Atlas.paper)
-            .safeAreaInset(edge: .bottom) {
-                if let next {
-                    NavigationLink(value: Route.puzzle(next.id)) {
-                        SlimMapCard(caption: "No. \(next.number) · \(Journey.province(of: next).name)", puzzle: next)
-                    }
-                    .buttonStyle(PressableStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .frame(maxWidth: 640)
-                }
-            }
-            .onAppear {
-                let focus = states.firstIndex(of: .current) ?? states.firstIndex(of: .skipped) ?? 0
-                proxy.scrollTo(focus, anchor: .center)
             }
         }
         .task { terrain = await ProvinceSheet.terrain(province) }
@@ -65,6 +61,11 @@ struct ProvinceMapView: View {
         }
     }
 
+    /// The stop the map opens on: this province's current or first skipped stop, else the first.
+    private func focus(_ states: [Journey.StopState]) -> Int {
+        states.firstIndex(of: .current) ?? states.firstIndex(of: .skipped) ?? 0
+    }
+
     /// The card's puzzle: this province's current or first skipped stop, else the realm's current.
     private func nextPuzzle(_ all: [Puzzle], realmStates: [Journey.StopState], range: Range<Int>) -> Puzzle? {
         let here = realmStates[range]
@@ -72,7 +73,7 @@ struct ProvinceMapView: View {
         return i.map { all[$0] }
     }
 
-    /// A clear 44pt button over each stop, which also carries its accessibility label and anchors the scroll.
+    /// A clear 44pt button over each stop, which also carries its accessibility label.
     private func stopButtons(_ puzzles: [Puzzle], states: [Journey.StopState]) -> some View {
         GeometryReader { geo in
             let k = geo.size.width / L.width
@@ -84,7 +85,6 @@ struct ProvinceMapView: View {
                 .buttonStyle(.plain)
                 .frame(width: 44, height: 44)
                 .position(x: p.x * k, y: p.y * k)
-                .id(j)
                 .accessibilityLabel(label(puzzles[j], state: states[j]))
             }
         }
