@@ -14,6 +14,26 @@ enum Naming {
         }
     }
 
+    /// Twelve provinces per realm: six on the near shore, then six across the sea. The last of
+    /// each shore is a scatter of islands.
+    private static let provinces: [Int: [String]] = [
+        7: ["Thornwick", "Brackenmere", "Saltreach", "Hollowdeep", "Emberfell", "The Crown Isles",
+            "Larkspur", "Mistlecombe", "Gullhaven", "Cindermoor", "Briarwatch", "The Lantern Isles"],
+        8: ["Oakhurst", "Fernhollow", "Kestrel Down", "Ashbourne", "Wyrmwood", "The Gilded Isles",
+            "Pennywhistle", "Rookmere", "Harrowgate", "Dunmarrow", "Stormholt", "The Amber Isles"],
+        9: ["Willowmere", "Copperleigh", "Ravenscar", "Mossgarth", "Highcrag", "The Thistle Isles",
+            "Bellbrook", "Foxglove", "Sablewood", "Greywater", "Wintermarch", "The Pearl Isles"],
+        10: ["Applecross", "Heronsford", "Blackthorn", "Duskmoor", "Ironhelm", "The Velvet Isles",
+             "Primrose", "Starling Fen", "Coldharbour", "Mirefield", "Frostpeak", "The Quiet Isles"],
+        11: ["Honeydew", "Swallowtail", "Cragmere", "Nightvale", "Sunspire", "The Far Isles",
+             "Goldenrod", "Owlcastle", "Tidewrack", "Hallowmere", "Dragonsreach", "The Last Isles"],
+    ]
+
+    static func province(size: Int, index: Int) -> String {
+        let names = provinces[size] ?? provinces[11]!
+        return names[index % names.count]
+    }
+
     private static let adjectives = [
         "Amber", "Bramble", "Clover", "Drowsy", "Ember", "Fernlit", "Gilded", "Hushed",
         "Ivy", "Juniper", "Lantern", "Mossy", "Nettle", "Owl's", "Pebble", "Quince",

@@ -41,10 +41,14 @@ struct PuzzleRecord: Codable {
 final class ProgressStore {
     private(set) var records: [String: PuzzleRecord] = [:]
     private(set) var lastPuzzleId: String?
+    /// Per realm (keyed by size), the solved count the journey map last drew. When the store has
+    /// more, the map plays the travel animation once. Local only: each device animates for itself.
+    private(set) var journeySeen: [String: Int] = [:]
 
     private struct File: Codable {
         var records: [String: PuzzleRecord]
         var lastPuzzleId: String?
+        var journeySeen: [String: Int]?
     }
 
     private let url: URL = {
@@ -62,6 +66,7 @@ final class ProgressStore {
            let file = try? JSONDecoder().decode(File.self, from: data) {
             records = file.records
             lastPuzzleId = file.lastPuzzleId
+            journeySeen = file.journeySeen ?? [:]
         }
         NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: cloud, queue: .main
@@ -157,6 +162,22 @@ final class ProgressStore {
         return list.first { records[$0.id]?.solvedOnce != true } ?? list.last
     }
 
+    /// Solved or not for each puzzle of a realm, in order, for `Journey.stopStates`.
+    func solvedFlags(size: Int) -> [Bool] {
+        PuzzleLibrary.shared.puzzles(size).map { records[$0.id]?.solvedOnce == true }
+    }
+
+    /// The solved count the map last drew. A realm never drawn counts as up to date, so the
+    /// first visit after this ships does not replay every solve so far.
+    func journeySeenCount(size: Int) -> Int { journeySeen[String(size)] ?? solvedCount(size: size) }
+
+    func markJourneySeen(size: Int) {
+        let count = solvedCount(size: size)
+        guard journeySeen[String(size)] != count else { return }
+        journeySeen[String(size)] = count
+        saveFile()
+    }
+
     /// The puzzle to offer as "Continue": the last one touched, if unfinished.
     var resumable: Puzzle? {
         guard let id = lastPuzzleId, record(id).inProgress else { return nil }
@@ -164,7 +185,7 @@ final class ProgressStore {
     }
 
     private func saveFile() {
-        let file = File(records: records, lastPuzzleId: lastPuzzleId)
+        let file = File(records: records, lastPuzzleId: lastPuzzleId, journeySeen: journeySeen)
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(file).write(to: url, options: .atomic)
