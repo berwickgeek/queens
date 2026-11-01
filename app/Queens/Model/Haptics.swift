@@ -174,6 +174,32 @@ final class Haptics {
         play(events, curves: [fade]) { notify.notificationOccurred(.success) }
     }
 
+    /// Follows the travel on a province map: a soft tap as the castle blooms, a light footstep and
+    /// tick as the seal walks, a knock as it settles and a bell as the new stop's name is written.
+    /// Finishing a province lands with the seal's press and the bell chord instead.
+    func travel(walks: Bool, finished: Bool) {
+        var events: [CHHapticEvent?] = []
+        if walks {
+            events.append(transient(at: Travel.bloom.lowerBound, intensity: 0.3, sharpness: 0.5))
+            for k in 0..<Travel.steps {
+                events.append(transient(at: Travel.step(k), intensity: 0.32, sharpness: 0.85))
+                events.append(sound("tick", at: Travel.step(k), volume: 0.25))
+            }
+        }
+        let land = Travel.land.lowerBound
+        if finished {
+            events.append(transient(at: land, intensity: 1.0, sharpness: 0.45))
+            events.append(continuous(at: land + 0.01, duration: 0.09, intensity: 0.6, sharpness: 0.15))
+            events.append(sound("seal", at: land, volume: 0.8))
+            events.append(sound("chord", at: land + 0.05, volume: 0.7))
+        } else {
+            events.append(transient(at: land, intensity: 0.5, sharpness: 0.4))
+            events.append(transient(at: Travel.name.upperBound, intensity: 0.3, sharpness: 0.9))
+            events.append(sound("lantern_2", at: Travel.name.upperBound, volume: 0.4))
+        }
+        play(events) { soft.impactOccurred(intensity: 0.5) }
+    }
+
     // MARK: Core Haptics
 
     /// The marimba bar `i` steps up the pentatonic scale from D4.

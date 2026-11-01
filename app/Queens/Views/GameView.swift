@@ -148,11 +148,18 @@ struct GameView: View {
                             .buttonStyle(PillButtonStyle(prominent: true))
                     }
                 }
-                // Holds the pin row's height so the board does not move on solve.
-                pinButton
-                    .buttonStyle(PillButtonStyle())
+                // The hidden pin row holds its height so the board does not move on solve;
+                // the way back to the map sits in its place, where the walk to the next stop plays.
+                ZStack {
+                    pinButton
+                        .labelStyle(.titleAndIcon)
+                        .hidden()
+                    Button { router.toMap(of: game.puzzle) } label: {
+                        Label("To the map", systemImage: "map")
+                    }
                     .labelStyle(.titleAndIcon)
-                    .hidden()
+                }
+                .buttonStyle(PillButtonStyle())
             }
             .transition(.opacity.animation(.easeOut(duration: 0.4).delay(fresh ? SolveTiming.entrance + SolveTiming.ribbon(rows: game.n) + 0.3 : 0)))
         } else {

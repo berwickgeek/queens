@@ -145,7 +145,12 @@ final class ProgressStore {
 
     func update(_ id: String, _ change: (inout PuzzleRecord) -> Void) {
         var r = record(id)
+        let wasSolved = r.solvedOnce
         change(&r)
+        // A realm's first solve on a map never drawn sets the baseline, so that solve still walks.
+        if !wasSolved, r.solvedOnce, let size = PuzzleLibrary.shared.byId[id]?.size, journeySeen[String(size)] == nil {
+            journeySeen[String(size)] = solvedCount(size: size)
+        }
         r.lastPlayed = Date()
         records[id] = r
         lastPuzzleId = id
@@ -168,7 +173,8 @@ final class ProgressStore {
     }
 
     /// The solved count the map last drew. A realm never drawn counts as up to date, so the
-    /// first visit after this ships does not replay every solve so far.
+    /// first visit after this ships does not replay every solve so far; `update` sets the
+    /// baseline on the next solve.
     func journeySeenCount(size: Int) -> Int { journeySeen[String(size)] ?? solvedCount(size: size) }
 
     func markJourneySeen(size: Int) {

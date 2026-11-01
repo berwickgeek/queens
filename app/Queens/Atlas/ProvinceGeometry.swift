@@ -83,4 +83,40 @@ enum ProvinceGeometry {
         if !states.isEmpty && states.allSatisfy({ $0 == .ahead }) { return L.provinceHeight + 40 }
         return -40
     }
+
+    // MARK: Travel
+
+    /// The last leg walked on a province: from the stop just solved to the new current stop.
+    /// `from` is nil when the traveller arrives from the province below; `to` is nil when the
+    /// leg ends at the castle because the province is finished.
+    struct Leg: Equatable {
+        var from: Int?
+        var to: Int?
+
+        /// The stop states as they were before this leg was walked.
+        func before(_ states: [Journey.StopState]) -> [Journey.StopState] {
+            var s = states
+            if let to { s[to] = .ahead }
+            if let from { s[from] = .current }
+            return s
+        }
+    }
+
+    /// The leg that brought the traveller to these stop states, if it ends on this province.
+    static func leg(_ states: [Journey.StopState]) -> Leg? {
+        if let j = states.firstIndex(of: .current) {
+            return Leg(from: j > 0 && states[j - 1] == .solved ? j - 1 : nil, to: j)
+        }
+        if !states.isEmpty && states.allSatisfy({ $0 == .solved }) { return Leg(from: states.count - 1, to: nil) }
+        return nil
+    }
+
+    /// The road the leg walks, first point at `from`. Empty when there is no stop to walk from.
+    static func path(_ leg: Leg, stops: [CGPoint]) -> [CGPoint] {
+        guard let from = leg.from else { return [] }
+        guard let to = leg.to else {
+            return [stops[from]] + AtlasGeometry.roadSegment(stops[from], castle(stops), index: from)
+        }
+        return Array(road(stops)[(from * 8)...(to * 8)])
+    }
 }
