@@ -23,6 +23,8 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Haptic and sound per action | `Model/Haptics.swift`, `tools/make_sounds.py` | One haptic per user action, same frame as the visual. Sounds go in the same pattern via `sound(_:at:volume:)`; add new ones to `make_sounds.py` and rerun it |
 | Wide screens (iPad, landscape) | `Views/HomeView.swift`, `Views/RealmView.swift`, `Views/GameView.swift` | Lists: `.frame(maxWidth: 640).frame(maxWidth: .infinity)`. Game: `wide` (regular by regular size class) puts the board beside a 380pt column |
 | Pin (save point) | `Model/GameModel.swift` setPin (also re-pins) / returnToPin, `Views/GameView.swift` pinButton | Marks that differ from the pin render at `Theme.pencilMark` in MarkView |
+| Atlas drawing (journey maps) | `Atlas/AtlasSketch.swift`, `Atlas/AtlasFeatures.swift`, `Atlas/AtlasCanvas.swift` | Build an `AtlasDrawing` with `AtlasSketch` (terrain, roads, stops, castles, furniture), paint it with `AtlasCanvas`; `AtlasSheet` for half inked, half pencil. Geometry in `Atlas/AtlasGeometry.swift` is Foundation only and unit tested. A pencil and an inked sketch from one seed must consume the RNG identically |
+| Atlas gallery (DEBUG) | `Views/AtlasGalleryView.swift` | Launch arg `-atlasGallery YES`; every Atlas drawing on one screen with build times, for comparing against the mockup shots |
 | Progress sync | `Model/ProgressStore.swift` | Local file first, mirrored to iCloud key-value store as one `p.<id>` key per puzzle; merge with `PuzzleRecord.merged`. Writes batch for 2s and flush on background; pull on foreground |
 
 ## New patterns log
@@ -35,3 +37,4 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Crown tally in the game header in place of "3 of 7 crowned", because Jay wanted to see progress as small crowns.
 - Rising stakes per crown, kingdom-finished shine, gilt seal for a new best, rare festival and shooting-star coronations, and the wood and bell sound set, because Jay asked to lean on reward psychology (anticipation, goal gradient, variable reward) and add sound.
 - Hand-drawn crowns and crosses (`InkCross`, seeded `Crown`, ink wobble on the marks layer), because Jay wanted the marks to look hand drawn like the borders.
+- Atlas drawing kit (pen and pencil sketching, watercolour washes on paper, wax seal stops, castles, IM Fell place names) and its DEBUG gallery, because the journey maps need terrain, roads and castles nothing in the app draws.

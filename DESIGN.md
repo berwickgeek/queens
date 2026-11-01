@@ -144,6 +144,8 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 
 **Gilding.** On solve the crowns turn `gold` (with a `gold-deep` outline) row by row, each with a small burst of four-point stars, then a light sheen sweeps the board and a thin gold line appears inside the outer frame. Then the coronation (`Board/Coronation.swift`): a dotted `gold-deep` royal road is drawn crown to crown from the top row down, with a spinning star at its head; as it reaches each crown, a ring of light washes through that crown's kingdom; when it reaches the last crown, small gold lanterns rise from every crown and drift up over the title. Afterwards, while the board stays gilded, one crown at a time catches the light with a small glint every 1.7s. Gold appears only on a solved board.
 
+**Journey maps (Atlas kit).** Each province is a hand-drawn sheet in the style of a dip pen and watercolour atlas, recorded as an `AtlasDrawing` (washes, ink, labels in 390-wide map units) by `AtlasSketch` and painted by `AtlasCanvas`. Layers, bottom to top: aged paper (`AtlasPaper`: blotches, a centre crease, a darker rim, grain), watercolour through `washBleed` and `granulate`, ink through `inkWobble`, then place names in IM Fell English with a paper halo. Every pen line wanders, starts and stops a little off its points, and a pressed nib leaves a thicker broken second pass. The travelled part of a sheet is inked and washed; the part ahead is pencil only (thin grey lines, no washes or pressure), and both come from the same seed so the inking lands exactly on the pencil. Solved stops are wax seals pressed with a crown, the current stop is named in red, stops ahead read "Uncharted". The road is red hand dashes behind the traveller and pencil dots ahead. Castles mark province ends, washed in the province pigment once reached. Colours come only from `Theme.Atlas`; IM Fell is used only on the maps (`Font.atlas`).
+
 ## Do's and Don'ts
 ### Do
 - Keep the board the largest thing on screen.
@@ -168,6 +170,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Shooting star (1 solve in 16, by chance) | a gold star with a tapering tail arcs over the board and title 400ms after the lanterns, over 1.1s | descending bells over a rush of air, a long light buzz |
 | Undo | undo arrow bounces down | selection tick |
 | Pin, Return to pin, Re-pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
+| Journey sheet inking | `AtlasInkLine` (the edge between inked and pencilled map) is animatable; the travel animation that moves it up the sheet arrives with the journey screen | none |
 | Hint | lightbulb bounces; clue text slides up and fades in, the old one slides out | none |
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |
