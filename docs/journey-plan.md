@@ -73,7 +73,7 @@ New pattern: Atlas drawing kit, because the maps need terrain, roads and castles
 - Always-mounted layers driven by `keyframeAnimator(trigger:)`, per the Coronation rule.
 - Haptics and sound through `Haptics` in the same pattern as the royal road: a light footstep per road segment, a bell when the name finishes; finishing a province gets the heavy seal press and a bell chord.
 - Reduce Motion: jump to the end state, no footsteps, card cross-fades.
-- After a solve, GameView's "Next puzzle" stays. Add "To the map" beside it, which pops to the province so the travel plays. Next puzzle still bumps `lastSeenSolved` the next time the map appears, so the animation plays then.
+- After a solve, GameView's "Next puzzle" stays. Add "To the map" beside it, which pops to the province so the travel plays. Next puzzle still bumps `journeySeen` the next time the map appears, so the animation plays then.
 
 ## Home (phase 6, optional)
 
@@ -83,7 +83,7 @@ New pattern: Atlas drawing kit, because the maps need terrain, roads and castles
 
 | PR | Contents | Notes |
 |---|---|---|
-| 1 | Journey model, province names, `lastSeenSolved`, layout functions | No UI change. Add a small `QueensTests` target for state and layout |
+| 1 | Journey model, province names, `journeySeen`, layout functions | No UI change. Add a small `QueensTests` target for state and layout |
 | 2 | Atlas kit + IM Fell + Atlas tokens, a DEBUG-only gallery screen | Compare against mockup screenshots |
 | 3 | Realm screen + `Route.province` | Grid stays reachable behind a DEBUG flag until 4 lands |
 | 4 | Province screen, grid removed, restore path | |
