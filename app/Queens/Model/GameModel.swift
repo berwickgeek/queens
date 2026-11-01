@@ -404,6 +404,7 @@ final class GameModel {
         let pin = self.pin.map { String($0.map(\.rawValue)) }
         let elapsed = elapsed()
         store.update(puzzle.id) { r in
+            if complete && !r.complete { r.solvedOn = Date() }
             r.marks = marks
             r.elapsed = elapsed
             r.complete = complete

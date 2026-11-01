@@ -14,6 +14,8 @@ struct PuzzleRecord: Codable {
     /// Best unhinted time.
     var bestTime: Double?
     var lastPlayed = Date()
+    /// When this puzzle was last solved, for the free daily allowance. Survives "Play again".
+    var solvedOn: Date?
 
     var started: Bool { elapsed > 0 || marks.contains(where: { $0 != "." }) }
     var inProgress: Bool { started && !complete }
@@ -24,12 +26,13 @@ struct PuzzleRecord: Codable {
         var r = other.lastPlayed > lastPlayed ? other : self
         r.solvedOnce = solvedOnce || other.solvedOnce
         r.bestTime = [bestTime, other.bestTime].compactMap { $0 }.min()
+        r.solvedOn = [solvedOn, other.solvedOn].compactMap { $0 }.max()
         return r
     }
 
     /// True when `self` holds something `other` lacks, so it is worth sending.
     func improves(_ other: PuzzleRecord) -> Bool {
-        solvedOnce != other.solvedOnce || bestTime != other.bestTime
+        solvedOnce != other.solvedOnce || bestTime != other.bestTime || solvedOn != other.solvedOn
             || lastPlayed.timeIntervalSince(other.lastPlayed) > 0.001
     }
 }
@@ -155,6 +158,14 @@ final class ProgressStore {
 
     func solvedCount(size: Int) -> Int {
         PuzzleLibrary.shared.puzzles(size).filter { records[$0.id]?.solvedOnce == true }.count
+    }
+
+    /// Puzzles ever solved, across every realm.
+    var lifetimeSolved: Int { records.values.filter(\.solvedOnce).count }
+
+    /// Puzzles solved today, by the device calendar. A puzzle solved twice today counts once.
+    var solvedToday: Int {
+        records.values.filter { $0.solvedOn.map(Calendar.current.isDateInToday) ?? false }.count
     }
 
     func firstUnsolved(size: Int) -> Puzzle? {

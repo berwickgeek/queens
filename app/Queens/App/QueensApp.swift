@@ -31,6 +31,7 @@ final class Router {
 struct QueensApp: App {
     @State private var store = ProgressStore()
     @State private var router = Router()
+    @State private var unlock = Unlock()
 
     init() {
         let bar = UINavigationBarAppearance()
@@ -55,6 +56,7 @@ struct QueensApp: App {
             RootView()
                 .environment(store)
                 .environment(router)
+                .environment(unlock)
         }
     }
 }

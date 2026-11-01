@@ -1,0 +1,38 @@
+{
+  "identifier" : "6C1F2B0E",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : true,
+      "internalID" : "6754000001",
+      "localizations" : [
+        {
+          "description" : "Every puzzle, every day, no limit.",
+          "displayName" : "Unlock all",
+          "locale" : "en_AU"
+        }
+      ],
+      "productID" : "cc.jaym.queens.unlock",
+      "referenceName" : "Unlock all",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_AU",
+    "_storefront" : "AUS",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
