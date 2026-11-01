@@ -157,6 +157,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 ## Motion
 | Event | Motion | Haptic |
 |---|---|---|
+| Puzzle opens (and Play again) | after 300ms the board drops in like a sheet laid on the table: from 94% scale, 22pt low and turned 1.2 degrees, on a 500ms spring. As it lands the kingdom washes bloom one at a time, top to bottom by first cell, 50ms apart, each fading in over 350ms. Times from `Entrance` in `Model/SolveTiming.swift` | a soft swell through the drop, a muffled landing with a paper thud, then a light tick and a quiet marimba bar per kingdom climbing the pentatonic scale to D. No sound or haptic when reopening a solved puzzle |
 | Cross placed | none (frequency rule) | soft light tap; woodblock tick |
 | Queen placed | crown scales 0.6 to 1 with spring; a ring of ink spreads from the cell over 500 to 700ms, wider and darker with each crown on the board; kingdom wash deepens over 450ms | full-strength thud with a short rumble tail that grows longer and deeper per crown; a marimba bar one pentatonic step higher per crown |
 | Kingdom finished (crown placed, every other cell crossed) | a band of light crosses the kingdom over 600ms, clipped to its border, with a brief tint | two light ticks; two high bars |
@@ -172,10 +173,10 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |
 
-Reduce Motion: no shake or bounce; crowns and banner fade in. The road, ripples, lanterns, shooting star, kingdom shine, glints and ink drop are not drawn; the seal fades in rather than drops; Home cards fade without rising.
+Reduce Motion: no shake or bounce; the board fades in without dropping; crowns and banner fade in. The road, ripples, lanterns, shooting star, kingdom shine, glints and ink drop are not drawn; the seal fades in rather than drops; Home cards fade without rising.
 
 ## Sound
-The wood and bell set: a woodblock tick for crosses, marimba bars for crowns, small bells for the coronation. All synthesised by `tools/make_sounds.py` into `app/Queens/Resources/Sounds`, pitched on D major pentatonic so crowns climb a scale that cannot sound wrong and the finale resolves home. Sounds play inside the Core Haptics pattern for their event, so each lands with its haptic (iPad plays the sound alone). The audio session is ambient: the silent switch mutes it and other audio keeps playing. A speaker button in the game screen's toolbar turns sound off (`sound` in UserDefaults). Lantern bells pick pitch and gap at random so no two solves ring the same.
+The wood and bell set: a woodblock tick for crosses, marimba bars for crowns, a paper thud as a new board lands, small bells for the coronation. All synthesised by `tools/make_sounds.py` into `app/Queens/Resources/Sounds`, pitched on D major pentatonic so crowns climb a scale that cannot sound wrong and the finale resolves home. Sounds play inside the Core Haptics pattern for their event, so each lands with its haptic (iPad plays the sound alone). The audio session is ambient: the silent switch mutes it and other audio keeps playing. A speaker button in the game screen's toolbar turns sound off (`sound` in UserDefaults). Lantern bells pick pitch and gap at random so no two solves ring the same.
 
 ## States
 | State | Rule |

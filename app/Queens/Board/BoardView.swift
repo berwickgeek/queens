@@ -3,6 +3,8 @@ import SwiftUI
 /// The storybook board: watercolour washes, pencil grid, wobbly ink borders, crowns and crosses.
 struct BoardView: View {
     let game: GameModel
+    /// False until the game screen has appeared; flipping it drops the sheet in and blooms the kingdoms.
+    var entered = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var touching = false
 
@@ -14,7 +16,7 @@ struct BoardView: View {
             let side = min(geo.size.width, geo.size.height)
             let cell = (side - inset * 2) / CGFloat(game.n)
             ZStack(alignment: .topLeading) {
-                WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, inset: inset, side: side)
+                WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, bloomed: entered, inset: inset, side: side)
                 PencilGrid(n: game.n, inset: inset)
                     .stroke(Theme.pencil, lineWidth: 1)
                 // Celebration layers stay mounted and draw nothing at rest, so a trigger bump always animates.
@@ -61,6 +63,15 @@ struct BoardView: View {
                 }
             }
             .frame(width: side, height: side)
+            // The entrance: the sheet is laid down with a slight turn and settles.
+            .opacity(entered ? 1 : 0)
+            .scaleEffect(entered || reduceMotion ? 1 : 0.94)
+            .rotationEffect(.degrees(entered || reduceMotion ? 0 : -1.2))
+            .offset(y: entered || reduceMotion ? 0 : 22)
+            .animation(
+                reduceMotion ? .easeOut(duration: 0.25).delay(Entrance.delay) : .spring(duration: Entrance.drop, bounce: 0.2).delay(Entrance.delay),
+                value: entered
+            )
             .keyframeAnimator(initialValue: 1.0, trigger: game.solveTrigger) { view, scale in
                 view.scaleEffect(scale)
             } keyframes: { _ in
@@ -139,16 +150,27 @@ struct BoardView: View {
 private struct WashLayer: View {
     let puzzle: Puzzle
     let claimed: Set<Int>
+    let bloomed: Bool
     let inset: CGFloat
     let side: CGFloat
 
+    /// Each kingdom's place in the bloom order, top to bottom by its first cell.
+    private var rank: [Int] {
+        let first = (0..<puzzle.size).map { g in puzzle.regionOf.firstIndex(of: g) ?? 0 }
+        var rank = Array(repeating: 0, count: puzzle.size)
+        for (i, g) in (0..<puzzle.size).sorted(by: { first[$0] < first[$1] }).enumerated() { rank[g] = i }
+        return rank
+    }
+
     var body: some View {
+        let rank = rank
         ZStack {
             ForEach(0..<puzzle.size, id: \.self) { g in
                 RegionShape(puzzle: puzzle, region: g, inset: inset)
                     .fill(Theme.region(g))
-                    .opacity(claimed.contains(g) ? 1 : Theme.washUnclaimed)
+                    .opacity(bloomed ? (claimed.contains(g) ? 1 : Theme.washUnclaimed) : 0)
                     .animation(.easeOut(duration: 0.45), value: claimed.contains(g))
+                    .animation(.easeOut(duration: Entrance.bloomFade).delay(Entrance.bloom(rank[g])), value: bloomed)
             }
         }
         .compositingGroup()

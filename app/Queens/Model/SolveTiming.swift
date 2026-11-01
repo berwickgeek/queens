@@ -40,6 +40,20 @@ enum SolveTiming {
     static let cometFlight = 1.1
 }
 
+/// The board's entrance when a puzzle opens, shared by BoardView and the haptic pattern.
+/// Times are seconds after the game screen appears.
+enum Entrance {
+    /// Lets the navigation push settle before the sheet drops.
+    static let delay = 0.3
+    /// The sheet drops in on a spring of this duration and lands `land` after it starts.
+    static let drop = 0.5
+    static let land = 0.3
+    /// Kingdom washes bloom one after another, top to bottom, starting as the sheet lands.
+    static let bloomStagger = 0.05
+    static let bloomFade = 0.35
+    static func bloom(_ rank: Int) -> Double { delay + land + Double(rank) * bloomStagger }
+}
+
 /// A rare extra on a solve, drawn by chance so a coronation is now and then not the usual one.
 enum Flourish: String {
     case none, festival, comet
