@@ -1,6 +1,6 @@
-# Queens
+# Crowns
 
-An offline Queens puzzle game for iPhone, written in SwiftUI.
+An offline puzzle game for iPhone (the Queens logic puzzle, with crowns), written in SwiftUI.
 
 Each puzzle is an N by N grid split into N coloured kingdoms. Place one crown in every row, every column and every kingdom, with no two crowns touching, not even diagonally.
 
