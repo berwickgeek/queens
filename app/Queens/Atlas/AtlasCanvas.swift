@@ -173,8 +173,10 @@ struct AtlasInkLine: Shape {
 
     func path(in rect: CGRect) -> Path {
         let k = rect.width / Journey.Layout.width
-        let edge = stride(from: CGFloat(-10), through: Journey.Layout.width + 10, by: 4).map { x in
-            CGPoint(x: x * k, y: (y + 12 * sin(x * 0.035 + 1) + 16 * (Self.noise(x * 0.02, 7) - 0.5)) * k)
+        let edge = stride(from: CGFloat(-10), through: Journey.Layout.width + 10, by: 4).map { (x: CGFloat) -> CGPoint in
+            let wave: CGFloat = 12 * sin(x * 0.035 + 1)
+            let wobble: CGFloat = 16 * (Self.noise(x * 0.02, 7) - 0.5)
+            return CGPoint(x: x * k, y: (y + wave + wobble) * k)
         }
         var path = Path.polyline(edge)
         path.addLine(to: CGPoint(x: rect.maxX + 10 * k, y: rect.maxY + 20))
