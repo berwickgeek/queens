@@ -5,6 +5,12 @@ enum Route: Hashable {
     /// A realm's size and a province index, 0 to 11.
     case province(Int, Int)
     case puzzle(String)
+
+    /// The stack that reopens a puzzle with its realm and province maps behind it.
+    static func path(to puzzle: Puzzle) -> [Route] {
+        let province = Journey.province(of: puzzle)
+        return [.realm(puzzle.size), .province(puzzle.size, province.index), .puzzle(puzzle.id)]
+    }
 }
 
 @MainActor @Observable
@@ -54,15 +60,6 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var restored = false
 
-    /// DEBUG builds keep the old puzzle grid at `-realmGrid YES` until the province map replaces it.
-    private var realmGrid: Bool {
-        #if DEBUG
-        UserDefaults.standard.bool(forKey: "realmGrid")
-        #else
-        false
-        #endif
-    }
-
     var body: some View {
         @Bindable var router = router
         NavigationStack(path: $router.path) {
@@ -70,14 +67,9 @@ struct RootView: View {
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .realm(let size):
-                        if realmGrid {
-                            RealmView(size: size)
-                        } else {
-                            RealmMapView(size: size)
-                        }
+                        RealmMapView(size: size)
                     case .province(let size, let index):
-                        // The province map arrives in PR 4; until then, its twenty puzzles.
-                        RealmView(size: size, province: index)
+                        ProvinceMapView(province: Journey.Province(size: size, index: index))
                     case .puzzle(let id):
                         if let puzzle = PuzzleLibrary.shared.byId[id] {
                             GameView(puzzle: puzzle, store: store)
@@ -99,7 +91,13 @@ struct RootView: View {
             #if DEBUG
             // Launch with `-openPuzzle 8-001` to go straight to a puzzle.
             if let id = UserDefaults.standard.string(forKey: "openPuzzle"), let puzzle = PuzzleLibrary.shared.byId[id] {
-                router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
+                router.path = Route.path(to: puzzle)
+                return
+            }
+            // Launch with `-openProvince 7-1` to go straight to a province's map.
+            let parts = (UserDefaults.standard.string(forKey: "openProvince") ?? "").split(separator: "-").compactMap { Int($0) }
+            if parts.count == 2 {
+                router.path = [.realm(parts[0]), .province(parts[0], parts[1])]
                 return
             }
             // Launch with `-openRealm 7` to go straight to a realm's map.
@@ -111,7 +109,7 @@ struct RootView: View {
             #endif
             // Reopen the puzzle that was left unfinished.
             if let puzzle = store.resumable {
-                router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
+                router.path = Route.path(to: puzzle)
             }
         }
     }

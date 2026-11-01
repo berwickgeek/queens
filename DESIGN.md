@@ -67,7 +67,7 @@ The memorable element is the board itself: watercolour washes that deepen as kin
 `primary` (ink, #2a3446) is the only accent. It draws borders, crowns, titles and the filled button. Contrast on `surface`: 12.0:1.
 
 ### Surface
-`surface` (#fbfcfd, paper) is the page. `surface-sunken` backs unplayed puzzle tiles. `border` outlines cards. Every screen sits on `PaperBackground`: paper run through the granulation shader, with faint contour lines (7% ink, 5% on the game screen) curling in from the top right and bottom left corners like hills on a map.
+`surface` (#fbfcfd, paper) is the page. `border` outlines cards. Every screen sits on `PaperBackground`: paper run through the granulation shader, with faint contour lines (7% ink, 5% on the game screen) curling in from the top right and bottom left corners like hills on a map.
 
 ### Text
 `on-surface` for body and titles, `on-surface-muted` (#5a6578, 5.7:1 on paper) for secondary text and crosses.
@@ -110,7 +110,7 @@ Paper shows around the board. No cards on the game screen.
 Flat. No shadows except the solved banner, which floats over the board with one soft shadow.
 
 ## Shapes
-Pills for buttons, 20pt radius for realm cards, 6pt for puzzle tiles. The board itself is square-cornered (a map sheet).
+Pills for buttons and 20pt radius for realm cards. The board itself is square-cornered (a map sheet).
 
 ## Components
 ### Buttons
@@ -120,10 +120,10 @@ Pills for buttons, 20pt radius for realm cards, 6pt for puzzle tiles. The board 
 `realm-card`: one per board size on Home, with the realm name, size, and progress (crowned of total) as a thin ink bar.
 
 ### Navigation
-System NavigationStack. Home, then realm (puzzle grid), then game.
+System NavigationStack. Home, then the realm map, then a province map, then the game. Reopening a puzzle (resume, `-openPuzzle`) rebuilds the whole stack, so Back walks province then realm.
 
 ### Pills, Tags, and Chips
-Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
+Difficulty shows as 1 to 5 small ink dots (`TierDots`) in the game header.
 
 ### Signature Components
 **Board.** Layers, bottom to top:
@@ -148,7 +148,9 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 
 **Realm map.** A realm opens as one long scrolling sheet (`Views/RealmMapView.swift`): twelve province bands climbing two shores, five land provinces and an isles province on each, with the sea crossing between them. A cartouche with the realm name sits at the top, a compass rose at the bottom right, a ship and a sea serpent in the crossing. Finished provinces are inked with their castle washed; the current province is inked up to the current stop, which carries a wax seal and its number in red; everything beyond is pencil, with names in grey and the state line reading "next" (the province after the current one) or "Uncharted". Each band is a tap target that opens that province, and the sheet scrolls to the current province when it appears. The terrain is drawn once per launch off the main thread; the paper shows on its own until it is ready.
 
-**Slim map card.** On the realm map the continue card is a slim pill pinned above the home indicator: province and count in muted sans, the puzzle name in serif, and an ink "Continue" capsule. It replaces the full ContinueCard there because that card would hide most of a province band.
+**Province map.** A province opens as its own sheet (`Views/ProvinceMapView.swift`): twenty stops on a road climbing from the south edge to a castle, the coast down the east side with the compass, serpent and ship offshore, mountains along the top, a lake on the west edge where the road swings away, and a cartouche with the province name in the top corner away from the castle. Each stop carries its puzzle's storybook name. Solved stops are seals, the current stop is a red-named wax seal, skipped stops are open rings, stops ahead are pencil rings reading "Uncharted". Ink covers the sheet up to the current stop. Every stop is a 44pt tap target that opens its puzzle, the ones ahead included, and reads as "Puzzle 38, The Umber Moor, current" to VoiceOver. The title bar shows the province name over "No. 21 to 40 · N solved". The province map replaces the old puzzle grid.
+
+**Slim map card.** On the realm and province maps the continue card is a slim pill pinned above the home indicator: a caption in muted sans (province and count on the realm map, puzzle number and province on the province map), the puzzle name in serif, and an ink "Continue" capsule. It replaces the full ContinueCard there because that card would hide most of a province band.
 
 ## Do's and Don'ts
 ### Do
@@ -176,6 +178,7 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Pin, Return to pin, Re-pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
 | Journey sheet inking | `AtlasInkLine` (the edge between inked and pencilled map) is animatable; the travel animation that moves it up the sheet arrives with the journey screen. The realm map sets it with no animation for now | none |
 | Realm map appears | scrolls to the current province, centred, with no animation | none |
+| Province map appears | scrolls to the current stop (or the first skipped one), centred, with no animation | none |
 | Hint | lightbulb bounces; clue text slides up and fades in, the old one slides out | none |
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |

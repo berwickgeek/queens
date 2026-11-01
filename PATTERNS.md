@@ -18,15 +18,15 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Screen background | `Views/Components.swift` PaperBackground | Every screen; `contours:` 0.05 on the game screen so the board stays loudest |
 | Pressable card or tile | `Views/Components.swift` PressableStyle | Use for NavigationLinks that look like cards |
 | Wax seal | `Views/Components.swift` WaxSeal / StampedSeal | `wax` tokens only here; `gilt: true` for a new best |
-| Grid tile | `Views/RealmView.swift` PuzzleTile | Small gold crown in the corner once solved |
 | Clue (stepped hint) | `Model/HintEngine.swift`, `Board/BoardView.swift` Spotlight / GhostCross | Same rules as `tools/generate.py`; `tools/hintcheck/run.sh` (on the Mac) must report 0 failures after any change |
 | Haptic and sound per action | `Model/Haptics.swift`, `tools/make_sounds.py` | One haptic per user action, same frame as the visual. Sounds go in the same pattern via `sound(_:at:volume:)`; add new ones to `make_sounds.py` and rerun it |
-| Wide screens (iPad, landscape) | `Views/HomeView.swift`, `Views/RealmView.swift`, `Views/GameView.swift` | Lists: `.frame(maxWidth: 640).frame(maxWidth: .infinity)`. Game: `wide` (regular by regular size class) puts the board beside a 380pt column |
+| Wide screens (iPad, landscape) | `Views/HomeView.swift`, `Views/RealmMapView.swift`, `Views/GameView.swift` | Lists: `.frame(maxWidth: 640).frame(maxWidth: .infinity)`. Game: `wide` (regular by regular size class) puts the board beside a 380pt column |
 | Pin (save point) | `Model/GameModel.swift` setPin (also re-pins) / returnToPin, `Views/GameView.swift` pinButton | Marks that differ from the pin render at `Theme.pencilMark` in MarkView |
 | Atlas drawing (journey maps) | `Atlas/AtlasSketch.swift`, `Atlas/AtlasFeatures.swift`, `Atlas/AtlasCanvas.swift` | Build an `AtlasDrawing` with `AtlasSketch` (terrain, roads, stops, castles, furniture), paint it with `AtlasCanvas`; `AtlasSheet` for half inked, half pencil. Geometry in `Atlas/AtlasGeometry.swift` is Foundation only and unit tested. A pencil and an inked sketch from one seed must consume the RNG identically |
 | Atlas gallery (DEBUG) | `Views/AtlasGalleryView.swift` | Launch arg `-atlasGallery YES`; every Atlas drawing on one screen with build times, for comparing against the mockup shots |
 | Realm map | `Views/RealmMapView.swift`, `Atlas/RealmSheet.swift`, `Atlas/RealmGeometry.swift` | Terrain (ink and pencil) cached per realm and built off the main thread; road, names and castles drawn live from progress. Clear NavigationLink bands over the sheet carry the taps and the accessibility labels. The sheet opens on the current band with `.defaultScrollAnchor` (a fraction of the sheet height), because `scrollTo` cannot find ids on views placed with `.position` inside a GeometryReader. Geometry is Foundation only and unit tested |
-| Slim map card | `Views/RealmMapView.swift` SlimMapCard | Paper capsule in `.safeAreaInset(edge: .bottom)` with an ink Continue capsule; use on map screens instead of ContinueCard |
+| Province map | `Views/ProvinceMapView.swift`, `Atlas/ProvinceSheet.swift`, `Atlas/ProvinceGeometry.swift` | Same split as the realm map: terrain cached per province off the main thread, road, stops and castle live. A clear 44pt NavigationLink per stop carries the tap and the accessibility label; the sheet opens on the leg's end or the current stop with `.defaultScrollAnchor`, as on the realm map |
+| Slim map card | `Views/RealmMapView.swift` SlimMapCard(caption:puzzle:) | Paper capsule in `.safeAreaInset(edge: .bottom)` with an ink Continue capsule; used on both maps instead of ContinueCard, each passing its own caption |
 | Progress sync | `Model/ProgressStore.swift` | Local file first, mirrored to iCloud key-value store as one `p.<id>` key per puzzle; merge with `PuzzleRecord.merged`. Writes batch for 2s and flush on background; pull on foreground |
 
 ## New patterns log
@@ -41,3 +41,4 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Hand-drawn crowns and crosses (`InkCross`, seeded `Crown`, ink wobble on the marks layer), because Jay wanted the marks to look hand drawn like the borders.
 - Atlas drawing kit (pen and pencil sketching, watercolour washes on paper, wax seal stops, castles, IM Fell place names) and its DEBUG gallery, because the journey maps need terrain, roads and castles nothing in the app draws.
 - Realm map (one scrolling sheet of twelve province bands, inked to the traveller) and the slim map card, because the full ContinueCard hides a province band.
+- Province map (twenty named stops to a castle) in place of the puzzle grid, so every puzzle is a place on the journey; the grid tile pattern is retired.
