@@ -35,9 +35,9 @@ struct RealmMapView: View {
                 if let current {
                     let province = Journey.Province(size: size, index: current / Journey.stopsPerProvince)
                     NavigationLink(value: Route.puzzle(puzzles[current].id)) {
-                        SlimMapCard(puzzle: puzzles[current], province: province,
-                                    solved: states[province.numbers.lowerBound - 1 ..< min(states.count, province.numbers.upperBound)]
-                                        .filter { $0 == .solved }.count)
+                        let solved = states[province.numbers.lowerBound - 1 ..< min(states.count, province.numbers.upperBound)]
+                            .filter { $0 == .solved }.count
+                        SlimMapCard(caption: "\(province.name) · \(solved) of \(Journey.stopsPerProvince)", puzzle: puzzles[current])
                     }
                     .buttonStyle(PressableStyle())
                     .padding(.horizontal, 16)
@@ -50,6 +50,7 @@ struct RealmMapView: View {
             }
         }
         .task { terrain = await RealmSheet.terrain(size: size) }
+        .navigationTitle("Realm")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -96,15 +97,14 @@ struct RealmMapView: View {
 
 /// The map's continue card: a slim pill, so it hides less of the province under it than the
 /// Home screen's ContinueCard would.
-private struct SlimMapCard: View {
+struct SlimMapCard: View {
+    let caption: String
     let puzzle: Puzzle
-    let province: Journey.Province
-    let solved: Int
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(province.name) · \(solved) of \(Journey.stopsPerProvince)")
+                Text(caption)
                     .font(.sans(13, .bold))
                     .foregroundStyle(Theme.muted)
                 Text(puzzle.name)
