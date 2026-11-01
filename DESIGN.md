@@ -146,6 +146,10 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 
 **Journey maps (Atlas kit).** Each province is a hand-drawn sheet in the style of a dip pen and watercolour atlas, recorded as an `AtlasDrawing` (washes, ink, labels in 390-wide map units) by `AtlasSketch` and painted by `AtlasCanvas`. Layers, bottom to top: aged paper (`AtlasPaper`: blotches, a centre crease, a darker rim, grain), watercolour through `washBleed` and `granulate`, ink through `inkWobble`, then place names in IM Fell English with a paper halo. Every pen line wanders, starts and stops a little off its points, and a pressed nib leaves a thicker broken second pass. The travelled part of a sheet is inked and washed; the part ahead is pencil only (thin grey lines, no washes or pressure), and both come from the same seed so the inking lands exactly on the pencil. Solved stops are wax seals pressed with a crown, the current stop is named in red, stops ahead read "Uncharted". The road is red hand dashes behind the traveller and pencil dots ahead. Castles mark province ends, washed in the province pigment once reached. Colours come only from `Theme.Atlas`; IM Fell is used only on the maps (`Font.atlas`).
 
+**Realm map.** A realm opens as one long scrolling sheet (`Views/RealmMapView.swift`): twelve province bands climbing two shores, five land provinces and an isles province on each, with the sea crossing between them. A cartouche with the realm name sits at the top, a compass rose at the bottom right, a ship and a sea serpent in the crossing. Finished provinces are inked with their castle washed; the current province is inked up to the current stop, which carries a wax seal and its number in red; everything beyond is pencil, with names in grey and the state line reading "next" (the province after the current one) or "Uncharted". Each band is a tap target that opens that province, and the sheet scrolls to the current province when it appears. The terrain is drawn once per launch off the main thread; the paper shows on its own until it is ready.
+
+**Slim map card.** On the realm map the continue card is a slim pill pinned above the home indicator: province and count in muted sans, the puzzle name in serif, and an ink "Continue" capsule. It replaces the full ContinueCard there because that card would hide most of a province band.
+
 ## Do's and Don'ts
 ### Do
 - Keep the board the largest thing on screen.
@@ -170,7 +174,8 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Shooting star (1 solve in 16, by chance) | a gold star with a tapering tail arcs over the board and title 400ms after the lanterns, over 1.1s | descending bells over a rush of air, a long light buzz |
 | Undo | undo arrow bounces down | selection tick |
 | Pin, Return to pin, Re-pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
-| Journey sheet inking | `AtlasInkLine` (the edge between inked and pencilled map) is animatable; the travel animation that moves it up the sheet arrives with the journey screen | none |
+| Journey sheet inking | `AtlasInkLine` (the edge between inked and pencilled map) is animatable; the travel animation that moves it up the sheet arrives with the journey screen. The realm map sets it with no animation for now | none |
+| Realm map appears | scrolls to the current province, centred, with no animation | none |
 | Hint | lightbulb bounces; clue text slides up and fades in, the old one slides out | none |
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |

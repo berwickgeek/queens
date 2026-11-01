@@ -2,6 +2,8 @@ import SwiftUI
 
 enum Route: Hashable {
     case realm(Int)
+    /// A realm's size and a province index, 0 to 11.
+    case province(Int, Int)
     case puzzle(String)
 }
 
@@ -52,6 +54,15 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var restored = false
 
+    /// DEBUG builds keep the old puzzle grid at `-realmGrid YES` until the province map replaces it.
+    private var realmGrid: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "realmGrid")
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         @Bindable var router = router
         NavigationStack(path: $router.path) {
@@ -59,7 +70,14 @@ struct RootView: View {
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .realm(let size):
-                        RealmView(size: size)
+                        if realmGrid {
+                            RealmView(size: size)
+                        } else {
+                            RealmMapView(size: size)
+                        }
+                    case .province(let size, let index):
+                        // The province map arrives in PR 4; until then, its twenty puzzles.
+                        RealmView(size: size, province: index)
                     case .puzzle(let id):
                         if let puzzle = PuzzleLibrary.shared.byId[id] {
                             GameView(puzzle: puzzle, store: store)
@@ -84,7 +102,7 @@ struct RootView: View {
                 router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
                 return
             }
-            // Launch with `-openRealm 7` to go straight to a realm's puzzle list.
+            // Launch with `-openRealm 7` to go straight to a realm's map.
             let realm = UserDefaults.standard.integer(forKey: "openRealm")
             if realm > 0 {
                 router.path = [.realm(realm)]
