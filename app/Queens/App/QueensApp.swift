@@ -69,6 +69,7 @@ struct RootView: View {
                 }
         }
         .tint(Theme.ink)
+        .atlasGallery()
         .onChange(of: scenePhase) { _, phase in
             // The game persists on .inactive, so by .background its last move is queued.
             if phase == .background { store.flushCloud() }
