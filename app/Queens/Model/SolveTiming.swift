@@ -54,6 +54,43 @@ enum Entrance {
     static func bloom(_ rank: Int) -> Double { delay + land + Double(rank) * bloomStagger }
 }
 
+/// The walk to the next stop on a province map, played once after a solve. Seconds after the
+/// map's travel trigger bumps, from the mockup's province animation.
+enum Travel {
+    /// The castle blooms where the seal stood; the seal's red name gives way to the stop's ink one.
+    static let bloom = 0.2...0.9
+    static let oldNameOut = 0.2...0.7
+    static let oldNameIn = 0.4...1.0
+    /// The seal walks the road, red ink following it.
+    static let walk = 0.6...1.7
+    /// The seal settles on the new stop, or the castle is inked when the province is finished.
+    static let land = 1.7...2.0
+    /// The edge between ink and pencil creeps up to the new stop.
+    static let ink = 0.9...2.6
+    /// "Uncharted" and the pencil ring fade from the new stop.
+    static let uncharted = 1.5...1.9
+    /// The slim card and the solved count move on.
+    static let card = 1.8
+    /// The new stop's name is written on, left to right.
+    static let name = 1.9...2.9
+    static let total = 3.0
+    /// Footsteps while the seal walks.
+    static let steps = 5
+
+    /// How far through `window` time `t` is, 0 to 1.
+    static func progress(_ t: Double, _ window: ClosedRange<Double>) -> Double {
+        min(max((t - window.lowerBound) / (window.upperBound - window.lowerBound), 0), 1)
+    }
+
+    static func easeOut(_ x: Double) -> Double { 1 - pow(1 - x, 3) }
+    static func easeInOut(_ x: Double) -> Double { x < 0.5 ? 4 * x * x * x : 1 - pow(-2 * x + 2, 3) / 2 }
+
+    /// When footstep `k` falls: evenly through the walk, half a step in from each end.
+    static func step(_ k: Int) -> Double {
+        walk.lowerBound + (walk.upperBound - walk.lowerBound) * (Double(k) + 0.5) / Double(steps)
+    }
+}
+
 /// A rare extra on a solve, drawn by chance so a coronation is now and then not the usual one.
 enum Flourish: String {
     case none, festival, comet

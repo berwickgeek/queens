@@ -67,7 +67,7 @@ The memorable element is the board itself: watercolour washes that deepen as kin
 `primary` (ink, #2a3446) is the only accent. It draws borders, crowns, titles and the filled button. Contrast on `surface`: 12.0:1.
 
 ### Surface
-`surface` (#fbfcfd, paper) is the page. `surface-sunken` backs unplayed puzzle tiles. `border` outlines cards. Every screen sits on `PaperBackground`: paper run through the granulation shader, with faint contour lines (7% ink, 5% on the game screen) curling in from the top right and bottom left corners like hills on a map.
+`surface` (#fbfcfd, paper) is the page. `border` outlines cards. Every screen sits on `PaperBackground`: paper run through the granulation shader, with faint contour lines (7% ink, 5% on the game screen) curling in from the top right and bottom left corners like hills on a map.
 
 ### Text
 `on-surface` for body and titles, `on-surface-muted` (#5a6578, 5.7:1 on paper) for secondary text and crosses.
@@ -110,7 +110,7 @@ Paper shows around the board. No cards on the game screen.
 Flat. No shadows except the solved banner, which floats over the board with one soft shadow.
 
 ## Shapes
-Pills for buttons, 20pt radius for realm cards, 6pt for puzzle tiles. The board itself is square-cornered (a map sheet).
+Pills for buttons and 20pt radius for realm cards. The board itself is square-cornered (a map sheet).
 
 ## Components
 ### Buttons
@@ -120,10 +120,10 @@ Pills for buttons, 20pt radius for realm cards, 6pt for puzzle tiles. The board 
 `realm-card`: one per board size on Home, with the realm name, size, and progress (crowned of total) as a thin ink bar.
 
 ### Navigation
-System NavigationStack. Home, then realm (puzzle grid), then game.
+System NavigationStack. Home, then the realm map, then a province map, then the game. Reopening a puzzle (resume, `-openPuzzle`) rebuilds the whole stack, so Back walks province then realm.
 
 ### Pills, Tags, and Chips
-Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
+Difficulty shows as 1 to 5 small ink dots (`TierDots`) in the game header.
 
 ### Signature Components
 **Board.** Layers, bottom to top:
@@ -143,6 +143,16 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 **Clues.** Hint gives a clue, not an answer, in up to three steps: where to look (the rows, columns or kingdoms involved stay bright, the rest of the board fades under paper at 62%), then why, then which cells (faint pulsing crosses for cells to dot, a dashed outline for a crown or a cell to test). The button reads More while a clue has another step. Kingdoms are named by colour (`Theme.regionNames`), rows and columns are counted from the top left.
 
 **Gilding.** On solve the crowns turn `gold` (with a `gold-deep` outline) row by row, each with a small burst of four-point stars, then a light sheen sweeps the board and a thin gold line appears inside the outer frame. Then the coronation (`Board/Coronation.swift`): a dotted `gold-deep` royal road is drawn crown to crown from the top row down, with a spinning star at its head; as it reaches each crown, a ring of light washes through that crown's kingdom; when it reaches the last crown, small gold lanterns rise from every crown and drift up over the title. Afterwards, while the board stays gilded, one crown at a time catches the light with a small glint every 1.7s. Gold appears only on a solved board.
+
+**Journey maps (Atlas kit).** Each province is a hand-drawn sheet in the style of a dip pen and watercolour atlas, recorded as an `AtlasDrawing` (washes, ink, labels in 390-wide map units) by `AtlasSketch` and painted by `AtlasCanvas`. Layers, bottom to top: aged paper (`AtlasPaper`: blotches, a centre crease, a darker rim, grain), watercolour through `washBleed` and `granulate`, ink through `inkWobble`, then place names in IM Fell English with a paper halo. Every pen line wanders, starts and stops a little off its points, and a pressed nib leaves a thicker broken second pass. The travelled part of a sheet is inked and washed; the part ahead is pencil only (thin grey lines, no washes or pressure), and both come from the same seed so the inking lands exactly on the pencil. Solved stops are wax seals pressed with a crown, the current stop is named in red, stops ahead read "Uncharted". The road is red hand dashes behind the traveller and pencil dots ahead. Castles mark province ends, washed in the province pigment once reached. Colours come only from `Theme.Atlas`; IM Fell is used only on the maps (`Font.atlas`).
+
+**Realm map.** A realm opens as one long scrolling sheet (`Views/RealmMapView.swift`): twelve province bands climbing two shores, five land provinces and an isles province on each, with the sea crossing between them. A cartouche with the realm name sits at the top, a compass rose at the bottom right, a ship and a sea serpent in the crossing. Finished provinces are inked with their castle washed; the current province is inked up to the current stop, which carries a wax seal and its number in red; everything beyond is pencil, with names in grey and the state line reading "next" (the province after the current one) or "Uncharted". Each band is a tap target that opens that province, and the sheet scrolls to the current province when it appears. The terrain is drawn once per launch off the main thread; the paper shows on its own until it is ready.
+
+**Province map.** A province opens as its own sheet (`Views/ProvinceMapView.swift`): twenty stops on a road climbing from the south edge to a castle, the coast down the east side with the compass, serpent and ship offshore, mountains along the top, a lake on the west edge where the road swings away, and a cartouche with the province name in the top corner away from the castle. Each stop carries its puzzle's storybook name. Solved stops are seals, the current stop is a red-named wax seal, skipped stops are open rings, stops ahead are pencil rings reading "Uncharted". Ink covers the sheet up to the current stop. Every stop is a 44pt tap target that opens its puzzle, the ones ahead included, and reads as "Puzzle 38, The Umber Moor, current" to VoiceOver. The title bar shows the province name over "No. 21 to 40 · N solved". The province map replaces the old puzzle grid. The first time it shows a new solve the traveller walks there (Motion, Journey travel). A solved puzzle offers "To the map" under Play again and Next puzzle, in the row the pin buttons held, which opens the puzzle's province map with the realm map behind it.
+
+**Slim map card.** On the realm and province maps the continue card is a slim pill pinned above the home indicator: a caption in muted sans (province and count on the realm map, puzzle number and province on the province map), the puzzle name in serif, and an ink "Continue" capsule. It replaces the full ContinueCard there because that card would hide most of a province band.
+
+**Province crop.** Each realm card on Home shows a 92pt square window onto the realm's current province (`Atlas/ProvinceCrop.swift`), centred on the current stop, or on the castle once the realm is finished, with a 12pt radius and 1pt border. It draws the province sheet exactly as the province map does and clips it, so the card and the map always agree. Paper shows until the cached terrain is ready. Hidden from VoiceOver; the card's text carries the meaning.
 
 ## Do's and Don'ts
 ### Do
@@ -169,14 +179,17 @@ Difficulty shows as 1 to 5 small ink dots on each puzzle tile.
 | Shooting star (1 solve in 16, by chance) | a gold star with a tapering tail arcs over the board and title 400ms after the lanterns, over 1.1s | descending bells over a rush of air, a long light buzz |
 | Undo | undo arrow bounces down | selection tick |
 | Pin, Return to pin, Re-pin | pin bounces down; pencilled marks fade over 250ms on return | selection tick |
+| Journey travel | The first time a province map shows a new solve, the traveller walks the last leg (`Atlas/Travel.swift`, timings in `Travel` in `Model/SolveTiming.swift`): from 0.2 s the castle blooms where the seal stood (scale 0.6 to 1) and the stop's red name gives way to its ink one; 0.6 to 1.7 s the seal walks the road (cubic in-out) with red ink drawn behind it; at 1.7 s the new seal lands (scale 1.18 to 1), or the castle is inked when the province is finished; 0.9 to 2.6 s the ink edge creeps up to the new stop; 1.5 to 1.9 s "Uncharted" and the pencil ring fade; at 1.8 s the slim card and solved count move on; 1.9 to 2.9 s the new name is written on left to right. Only the leg into the current stop plays, however many solves were unseen. The realm map sets the ink edge with no animation | none |
+| Realm map appears | scrolls to the current province, centred, with no animation | none |
+| Province map appears | scrolls to the current stop (or the first skipped one), centred, with no animation | none |
 | Hint | lightbulb bounces; clue text slides up and fades in, the old one slides out | none |
 | Home appears | cards rise 14pt and fade in, 60ms apart; progress bars fill from empty | none |
 | Card or tile pressed | scales to 0.97 | none |
 
-Reduce Motion: no shake or bounce; the board fades in without dropping; crowns and banner fade in. The road, ripples, lanterns, shooting star, kingdom shine, glints and ink drop are not drawn; the seal fades in rather than drops; Home cards fade without rising.
+Reduce Motion: no shake or bounce; the board fades in without dropping; crowns and banner fade in. The road, ripples, lanterns, shooting star, kingdom shine, glints and ink drop are not drawn; the seal fades in rather than drops; Home cards fade without rising. A province map opens at the end of its travel, with no walk.
 
 ## Sound
-The wood and bell set: a woodblock tick for crosses, marimba bars for crowns, a paper thud as a new board lands, small bells for the coronation. All synthesised by `tools/make_sounds.py` into `app/Queens/Resources/Sounds`, pitched on D major pentatonic so crowns climb a scale that cannot sound wrong and the finale resolves home. Sounds play inside the Core Haptics pattern for their event, so each lands with its haptic (iPad plays the sound alone). The audio session is ambient: the silent switch mutes it and other audio keeps playing. A speaker button in the game screen's toolbar turns sound off (`sound` in UserDefaults). Lantern bells pick pitch and gap at random so no two solves ring the same.
+The wood and bell set: a woodblock tick for crosses, marimba bars for crowns, a paper thud as a new board lands, small bells for the coronation. All synthesised by `tools/make_sounds.py` into `app/Queens/Resources/Sounds`, pitched on D major pentatonic so crowns climb a scale that cannot sound wrong and the finale resolves home. Sounds play inside the Core Haptics pattern for their event, so each lands with its haptic (iPad plays the sound alone). The audio session is ambient: the silent switch mutes it and other audio keeps playing. A speaker button in the game screen's toolbar turns sound off (`sound` in UserDefaults). Lantern bells pick pitch and gap at random so no two solves ring the same. The province map's travel reuses the set: a tick and light footstep per step of the walk, a knock and a bell as the new stop's name is written, or the seal press and chord when the walk ends at the castle.
 
 ## States
 | State | Rule |

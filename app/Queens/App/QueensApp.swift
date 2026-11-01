@@ -2,7 +2,15 @@ import SwiftUI
 
 enum Route: Hashable {
     case realm(Int)
+    /// A realm's size and a province index, 0 to 11.
+    case province(Int, Int)
     case puzzle(String)
+
+    /// The stack that reopens a puzzle with its realm and province maps behind it.
+    static func path(to puzzle: Puzzle) -> [Route] {
+        let province = Journey.province(of: puzzle)
+        return [.realm(puzzle.size), .province(puzzle.size, province.index), .puzzle(puzzle.id)]
+    }
 }
 
 @MainActor @Observable
@@ -11,6 +19,11 @@ final class Router {
 
     func replaceLast(with route: Route) {
         if path.isEmpty { path = [route] } else { path[path.count - 1] = route }
+    }
+
+    /// Back to the puzzle's province map, with the realm map behind it, however the puzzle was opened.
+    func toMap(of puzzle: Puzzle) {
+        path = Array(Route.path(to: puzzle).dropLast())
     }
 }
 
@@ -59,7 +72,9 @@ struct RootView: View {
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .realm(let size):
-                        RealmView(size: size)
+                        RealmMapView(size: size)
+                    case .province(let size, let index):
+                        ProvinceMapView(province: Journey.Province(size: size, index: index))
                     case .puzzle(let id):
                         if let puzzle = PuzzleLibrary.shared.byId[id] {
                             GameView(puzzle: puzzle, store: store)
@@ -69,6 +84,7 @@ struct RootView: View {
                 }
         }
         .tint(Theme.ink)
+        .atlasGallery()
         .onChange(of: scenePhase) { _, phase in
             // The game persists on .inactive, so by .background its last move is queued.
             if phase == .background { store.flushCloud() }
@@ -80,10 +96,16 @@ struct RootView: View {
             #if DEBUG
             // Launch with `-openPuzzle 8-001` to go straight to a puzzle.
             if let id = UserDefaults.standard.string(forKey: "openPuzzle"), let puzzle = PuzzleLibrary.shared.byId[id] {
-                router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
+                router.path = Route.path(to: puzzle)
                 return
             }
-            // Launch with `-openRealm 7` to go straight to a realm's puzzle list.
+            // Launch with `-openProvince 7-1` to go straight to a province's map.
+            let parts = (UserDefaults.standard.string(forKey: "openProvince") ?? "").split(separator: "-").compactMap { Int($0) }
+            if parts.count == 2 {
+                router.path = [.realm(parts[0]), .province(parts[0], parts[1])]
+                return
+            }
+            // Launch with `-openRealm 7` to go straight to a realm's map.
             let realm = UserDefaults.standard.integer(forKey: "openRealm")
             if realm > 0 {
                 router.path = [.realm(realm)]
@@ -92,7 +114,7 @@ struct RootView: View {
             #endif
             // Reopen the puzzle that was left unfinished.
             if let puzzle = store.resumable {
-                router.path = [.realm(puzzle.size), .puzzle(puzzle.id)]
+                router.path = Route.path(to: puzzle)
             }
         }
     }

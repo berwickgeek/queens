@@ -14,6 +14,9 @@ targets:
     platform: iOS
     sources:
       - path: Queens
+    scheme:
+      testTargets:
+        - QueensTests
     entitlements:
       path: Queens/Queens.entitlements
       properties:
@@ -31,6 +34,8 @@ targets:
           - NunitoSans-Regular.ttf
           - NunitoSans-Bold.ttf
           - NunitoSans-ExtraBold.ttf
+          - IMFellEnglish-Regular.ttf
+          - IMFellEnglish-Italic.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UISupportedInterfaceOrientations~ipad:
@@ -47,3 +52,10 @@ targets:
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+  QueensTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: QueensTests
+    dependencies:
+      - target: Queens
