@@ -14,6 +14,7 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 | Celebration banner | `Views/Components.swift` SolvedBanner / Ribbon | Gold crown stamp on top |
 | Solve celebration | `Board/BoardView.swift` SparkleBurst, Sheen, InkLayer gilding | Every delay comes from `Model/SolveTiming.swift` so haptics and visuals land together |
 | Coronation (after gilding) | `Board/Coronation.swift` RoyalRoad, KingdomRipple, Lanterns, CrownGlints | Keep each layer always mounted and drive it with `keyframeAnimator(trigger:)`; a layer inserted with the new trigger value never animates |
+| Board entrance | `Board/BoardView.swift` `entered`, `Views/GameView.swift` enter() / playAgain(), `Haptics.boardIn` | `entered` starts false and flips on appear; implicit `.animation(_:value:)` with delays from `Entrance` drives the drop and per-kingdom bloom, and the haptic pattern reads the same clock. Play again hides it with a no-animation transaction and flips it back next run loop |
 | Placement feedback | `Board/Coronation.swift` InkDrop, KingdomSeal | InkDrop: `GameModel.placeTrigger` / `lastPlaced`, `strength` is the share of crowns placed. KingdomSeal: `sealTrigger` / `lastSealed`, only from forward moves (tap, end of drag), never undo, clear or pin return |
 | Rare coronation | `Model/SolveTiming.swift` Flourish, `Board/Coronation.swift` Lanterns(flourish:), Comet | `Flourish.draw()` on each solve; DEBUG launch arg `-flourish festival` or `-flourish comet` forces one |
 | Screen background | `Views/Components.swift` PaperBackground | Every screen; `contours:` 0.05 on the game screen so the board stays loudest |
@@ -42,6 +43,7 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Crown tally in the game header in place of "3 of 7 crowned", because Jay wanted to see progress as small crowns.
 - Rising stakes per crown, kingdom-finished shine, gilt seal for a new best, rare festival and shooting-star coronations, and the wood and bell sound set, because Jay asked to lean on reward psychology (anticipation, goal gradient, variable reward) and add sound.
 - Hand-drawn crowns and crosses (`InkCross`, seeded `Crown`, ink wobble on the marks layer), because Jay wanted the marks to look hand drawn like the borders.
+- Board entrance (sheet drop, kingdom bloom, paper thud and a climbing run of bars), because Jay wanted a sound, haptic and animation when a puzzle starts.
 - Atlas drawing kit (pen and pencil sketching, watercolour washes on paper, wax seal stops, castles, IM Fell place names) and its DEBUG gallery, because the journey maps need terrain, roads and castles nothing in the app draws.
 - Realm map (one scrolling sheet of twelve province bands, inked to the traveller) and the slim map card, because the full ContinueCard hides a province band.
 - Province map (twenty named stops to a castle) in place of the puzzle grid, so every puzzle is a place on the journey; the grid tile pattern is retired.

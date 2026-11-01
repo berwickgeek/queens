@@ -13,6 +13,8 @@ struct GameView: View {
     @State private var pinTick = 0
     /// Play again was tapped with today's free solves used up; the limit card shows until unlocked.
     @State private var againAsked = false
+    /// Flips once the screen appears, so the board makes its entrance.
+    @State private var entered = false
     @AppStorage(Haptics.soundKey) private var soundOn = true
 
     init(puzzle: Puzzle, store: ProgressStore) {
@@ -27,7 +29,7 @@ struct GameView: View {
             } else if wide {
                 // iPad, landscape: board on the left, everything else in a column beside it.
                 HStack(spacing: 32) {
-                    BoardView(game: game)
+                    BoardView(game: game, entered: entered)
                         .padding(.vertical, 24)
                     VStack(spacing: 14) {
                         Spacer(minLength: 0)
@@ -43,7 +45,7 @@ struct GameView: View {
                 VStack(spacing: 14) {
                     header
                     Spacer(minLength: 4)
-                    BoardView(game: game)
+                    BoardView(game: game, entered: entered)
                         .padding(.horizontal, 12)
                     outcome
                     controls
@@ -67,7 +69,10 @@ struct GameView: View {
         }
         .onAppear {
             Haptics.shared.prepare()
-            if !locked { game.resume() }
+            if !locked {
+                game.resume()
+                if !entered { enter() }
+            }
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "autosolve") { game.debugSolve() }
             #endif
@@ -81,9 +86,10 @@ struct GameView: View {
             guard !now else { return }
             if againAsked {
                 againAsked = false
-                game.playAgain()
+                playAgain()
             } else {
                 game.resume()
+                if !entered { enter() }
             }
         }
     }
@@ -92,6 +98,21 @@ struct GameView: View {
     /// a puzzle already under way can always be finished.
     private var locked: Bool {
         unlock.blocks(store) && (againAsked || !store.record(game.puzzle.id).started)
+    }
+
+    /// The board's entrance, with its sound and haptic when there is a puzzle to play.
+    private func enter() {
+        if !game.complete { Haptics.shared.boardIn(kingdoms: game.n) }
+        entered = true
+    }
+
+    /// Clears the board and lays it down again as a fresh sheet.
+    private func playAgain() {
+        game.playAgain()
+        var hide = Transaction()
+        hide.disablesAnimations = true
+        withTransaction(hide) { entered = false }
+        DispatchQueue.main.async { enter() }
     }
 
     private var wide: Bool { hSize == .regular && vSize == .regular }
@@ -165,7 +186,7 @@ struct GameView: View {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
                     Button("Play again") {
-                        if unlock.blocks(store) { againAsked = true } else { game.playAgain() }
+                        if unlock.blocks(store) { againAsked = true } else { playAgain() }
                     }
                         .buttonStyle(PillButtonStyle())
                     if let next = PuzzleLibrary.shared.next(after: game.puzzle) {

@@ -77,6 +77,27 @@ final class Haptics {
         ]) { heavy.impactOccurred(intensity: 1.0) }
     }
 
+    /// A new board: a soft swell as the sheet drops, a muffled landing, then one quiet bar per kingdom as
+    /// its wash blooms, climbing the pentatonic scale to D so the run ends on the tonic like the crowns.
+    func boardIn(kingdoms n: Int) {
+        let land = Entrance.delay + Entrance.land
+        let swell = CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [
+            .init(relativeTime: Entrance.delay, value: 0.2),
+            .init(relativeTime: land, value: 1.0),
+        ], relativeTime: 0)
+        var events: [CHHapticEvent?] = [
+            continuous(at: Entrance.delay, duration: Entrance.land, intensity: 0.2, sharpness: 0.1),
+            transient(at: land, intensity: 0.7, sharpness: 0.25),
+            sound("sheet", at: land, volume: 0.7),
+        ]
+        for rank in 0..<n {
+            let t = Entrance.bloom(rank)
+            events.append(transient(at: t, intensity: 0.22, sharpness: 0.7))
+            events.append(sound(note(10 - n + 1 + rank), at: t, volume: 0.22))
+        }
+        play(events, curves: [swell]) { soft.impactOccurred(intensity: 0.7) }
+    }
+
     /// The last crown: D5 and its octave, then a rumble that swells through the pause
     /// before the board bounces, so the finale is felt coming.
     func lastCrown(rows n: Int) {

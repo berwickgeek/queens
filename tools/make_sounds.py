@@ -156,6 +156,14 @@ def main():
         marimba(x, 0, hz(MAJOR[d % 7] + 12 * (d // 7)))
         save(f"crown_{k:02d}", x)
 
+    # A new board: a sheet of paper laid on the table, a soft rush and a muffled thump. Rendered after the
+    # crowns so every sound above keeps its noise.
+    x = buf(0.4)
+    noise(x, 0, 0.16, 0.8, 420, 0.7)
+    tone(x, 0.01, 110, 0.7, 0.045)
+    tone(x, 0.01, 220, 0.25, 0.02)
+    save("sheet", x, 0.7)
+
     print(f"wrote {len(list(OUT.glob('*.wav')))} sounds to {OUT}")
 
 
