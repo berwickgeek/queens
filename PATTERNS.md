@@ -48,3 +48,4 @@ Reuse these before writing anything new. Tokens live in `app/Queens/Theme/Theme.
 - Province map (twenty named stops to a castle) in place of the puzzle grid, so every puzzle is a place on the journey; the grid tile pattern is retired.
 - Journey travel (the seal walks the last leg on the province map, ink creeps up, the new name is written on) and "To the map" on a solved puzzle, because playing a puzzle should move the traveller across the map.
 - Province crop on the Home realm cards in place of the first unsolved puzzle's mini board, so Home shows where the traveller is on the journey.
+- Wax seal app icon in place of the board-and-crown icon, because the app was renamed Crowns and the board tiles blurred into colour at home-screen size.
