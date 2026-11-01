@@ -1,6 +1,6 @@
-# Queens
+# Crowns
 
-Offline Queens puzzle app for iPhone. SwiftUI, iOS 17, xcodegen (`app/project.yml`).
+Crowns: offline crown-placing logic puzzle (Queens genre) for iPhone. Internal names (target, folders, bundle id `cc.jaym.queens`) stay Queens so iCloud progress survives. SwiftUI, iOS 17, xcodegen (`app/project.yml`).
 
 Before touching UI, read DESIGN.md and PATTERNS.md and reuse the exemplar files.
 

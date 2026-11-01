@@ -9,7 +9,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 18) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Queens")
+                        Text("Crowns")
                             .font(.displayLg)
                             .foregroundStyle(Theme.ink)
                         Text("One crown in every row, column and kingdom.")

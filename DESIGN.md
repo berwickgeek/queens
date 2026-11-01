@@ -1,7 +1,7 @@
 ---
 version: alpha
-name: Queens
-description: An offline Queens puzzle game for one player (Jay) on iPhone, styled as a hand-drawn storybook map.
+name: Crowns
+description: An offline crown-placing logic puzzle (the Queens genre) for one player (Jay) on iPhone, styled as a hand-drawn storybook map.
 authority: design-skill
 scope: app
 takeover_date: null
@@ -53,7 +53,7 @@ components:
   solved-tick: { backgroundColor: "{colors.surface}", textColor: "{colors.success}" }
 ---
 
-# Queens design system
+# Crowns design system
 
 ## Overview
 Storybook map. Each puzzle is a small hand-drawn map: regions are kingdoms painted in soft watercolour, borders are wobbly ink, and a fine pencil grid shows every row and column. Queens are crowns. Tone: whimsical, calm, tactile. Density is low: one board per screen, nothing competing with it.
