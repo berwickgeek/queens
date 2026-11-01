@@ -9,6 +9,8 @@ struct GameView: View {
     @State private var undoTick = 0
     @State private var hintTick = 0
     @State private var pinTick = 0
+    /// Flips once the screen appears, so the board makes its entrance.
+    @State private var entered = false
     @AppStorage(Haptics.soundKey) private var soundOn = true
 
     init(puzzle: Puzzle, store: ProgressStore) {
@@ -20,7 +22,7 @@ struct GameView: View {
             if wide {
                 // iPad, landscape: board on the left, everything else in a column beside it.
                 HStack(spacing: 32) {
-                    BoardView(game: game)
+                    BoardView(game: game, entered: entered)
                         .padding(.vertical, 24)
                     VStack(spacing: 14) {
                         Spacer(minLength: 0)
@@ -36,7 +38,7 @@ struct GameView: View {
                 VStack(spacing: 14) {
                     header
                     Spacer(minLength: 4)
-                    BoardView(game: game)
+                    BoardView(game: game, entered: entered)
                         .padding(.horizontal, 12)
                     outcome
                     controls
@@ -61,6 +63,7 @@ struct GameView: View {
         .onAppear {
             Haptics.shared.prepare()
             game.resume()
+            if !entered { enter() }
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "autosolve") { game.debugSolve() }
             #endif
@@ -69,6 +72,21 @@ struct GameView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { game.resume() } else { game.pause() }
         }
+    }
+
+    /// The board's entrance, with its sound and haptic when there is a puzzle to play.
+    private func enter() {
+        if !game.complete { Haptics.shared.boardIn(kingdoms: game.n) }
+        entered = true
+    }
+
+    /// Clears the board and lays it down again as a fresh sheet.
+    private func playAgain() {
+        game.playAgain()
+        var hide = Transaction()
+        hide.disablesAnimations = true
+        withTransaction(hide) { entered = false }
+        DispatchQueue.main.async { enter() }
     }
 
     private var wide: Bool { hSize == .regular && vSize == .regular }
@@ -141,7 +159,7 @@ struct GameView: View {
             let fresh = !game.gilded || game.solveTrigger > 0
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
-                    Button("Play again") { game.playAgain() }
+                    Button("Play again") { playAgain() }
                         .buttonStyle(PillButtonStyle())
                     if let next = PuzzleLibrary.shared.next(after: game.puzzle) {
                         Button("Next puzzle") { router.replaceLast(with: .puzzle(next.id)) }
