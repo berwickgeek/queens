@@ -114,8 +114,8 @@ private struct RealmCard: View {
                     .foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 0)
-            if let puzzle = store.firstUnsolved(size: size) {
-                MiniBoard(puzzle: puzzle)
+            if total > 0 {
+                ProvinceCrop(size: size, solved: store.solvedFlags(size: size))
                     .frame(width: 92)
             }
         }
