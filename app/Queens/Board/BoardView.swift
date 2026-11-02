@@ -276,15 +276,19 @@ private struct KingdomDrop: ViewModifier {
                 MoveKeyframe(1.3)
                 LinearKeyframe(1.3, duration: start)
                 LinearKeyframe(1, duration: Entrance.fall, timingCurve: .easeIn)
+                // Squash, a small rebound, and rest exactly at 1 by the end of the shudder. Hand-timed
+                // rather than a spring, which this short would be cut off mid-bounce and pop to rest.
                 LinearKeyframe(0.96, duration: 0.04)
-                SpringKeyframe(1, duration: 0.22, spring: .bouncy)
+                LinearKeyframe(1.012, duration: 0.09, timingCurve: .easeOut)
+                LinearKeyframe(1, duration: Entrance.shudder - 0.13, timingCurve: .easeInOut)
             }
             KeyframeTrack(\.turn) {
                 MoveKeyframe(turn)
                 LinearKeyframe(turn, duration: start)
                 LinearKeyframe(0, duration: Entrance.fall, timingCurve: .easeIn)
                 LinearKeyframe(-turn * 0.12, duration: 0.05)
-                SpringKeyframe(0, duration: 0.2, spring: .bouncy)
+                LinearKeyframe(turn * 0.03, duration: 0.09, timingCurve: .easeInOut)
+                LinearKeyframe(0, duration: Entrance.shudder - 0.14, timingCurve: .easeInOut)
             }
             KeyframeTrack(\.shake) {
                 MoveKeyframe(0)
@@ -316,19 +320,25 @@ private struct KingdomLines: View {
         // Always mounted (a keyframe layer inserted with the new trigger value never animates); hidden at rest.
         ZStack {
             ForEach(0..<n, id: \.self) { g in
-                ZStack {
-                    PencilGrid(n: n, inset: inset)
-                        .stroke(Theme.pencil, lineWidth: 1)
-                        .clipShape(RegionShape(puzzle: puzzle, region: g, inset: inset))
+                PencilGrid(n: n, inset: inset)
+                    .stroke(Theme.pencil, lineWidth: 1)
+                    .clipShape(RegionShape(puzzle: puzzle, region: g, inset: inset))
+                    .modifier(KingdomDrop(puzzle: puzzle, region: g, rank: rank[g], trigger: trigger, inset: inset, side: side))
+            }
+            // The wobble goes on after the tiles move, in board space like InkLayer's, so a landed outline is
+            // the same wobbly line the dividers draw and the handover does not shift every border at once.
+            ZStack {
+                ForEach(0..<n, id: \.self) { g in
                     RegionOutline(puzzle: puzzle, region: g, inset: inset)
                         .stroke(Theme.ink, style: StrokeStyle(lineWidth: puzzle.borderWidth, lineCap: .round, lineJoin: .round))
-                        .distortionEffect(
-                            ShaderLibrary.inkWobble(.float(0.05), .float(1.6)),
-                            maxSampleOffset: CGSize(width: 2, height: 2)
-                        )
+                        .modifier(KingdomDrop(puzzle: puzzle, region: g, rank: rank[g], trigger: trigger, inset: inset, side: side))
                 }
-                .modifier(KingdomDrop(puzzle: puzzle, region: g, rank: rank[g], trigger: trigger, inset: inset, side: side))
             }
+            .frame(width: side, height: side)
+            .distortionEffect(
+                ShaderLibrary.inkWobble(.float(0.05), .float(1.6)),
+                maxSampleOffset: CGSize(width: 2, height: 2)
+            )
         }
         .frame(width: side, height: side)
         .keyframeAnimator(initialValue: 0.0, trigger: trigger) { view, o in
