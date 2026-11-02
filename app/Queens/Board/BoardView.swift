@@ -7,6 +7,9 @@ struct BoardView: View {
     var entered = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var touching = false
+    /// Bumped each time `entered` turns true. The tile keyframes run off this rather than `entered`, so the
+    /// no-animation hide in Play again never starts (and spoils) a run of its own.
+    @State private var drops = 0
 
     /// Keeps the outer frame stroke inside the view so it is not clipped.
     private let inset: CGFloat = 3
@@ -16,9 +19,13 @@ struct BoardView: View {
             let side = min(geo.size.width, geo.size.height)
             let cell = (side - inset * 2) / CGFloat(game.n)
             ZStack(alignment: .topLeading) {
-                WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, bloomed: entered, inset: inset, side: side)
+                WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, bloomed: entered, drop: drops, inset: inset, side: side)
                 PencilGrid(n: game.n, inset: inset)
                     .stroke(Theme.pencil, lineWidth: 1)
+                    .modifier(AfterLanding(trigger: drops, kingdoms: game.n, enabled: !reduceMotion))
+                if !reduceMotion {
+                    KingdomDust(puzzle: game.puzzle, trigger: drops, inset: inset, side: side)
+                }
                 // Celebration layers stay mounted and draw nothing at rest, so a trigger bump always animates.
                 if !reduceMotion {
                     KingdomRipple(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
@@ -29,7 +36,11 @@ struct BoardView: View {
                         .allowsHitTesting(false)
                         .transition(.opacity)
                 }
-                InkLayer(puzzle: game.puzzle, inset: inset, gilded: game.gilded, gildDelay: SolveTiming.finale(rows: game.n))
+                InkLayer(puzzle: game.puzzle, inset: inset, gilded: game.gilded, gildDelay: SolveTiming.finale(rows: game.n),
+                         entering: drops, enterMotion: !reduceMotion)
+                if !reduceMotion {
+                    KingdomLines(puzzle: game.puzzle, trigger: drops, inset: inset, side: side)
+                }
                 if let step = game.clueStep {
                     ForEach(step.cells.sorted(), id: \.self) { hint in
                         Group {
@@ -48,6 +59,7 @@ struct BoardView: View {
                         .offset(x: inset + CGFloat(game.lastPlaced % game.n) * cell, y: inset + CGFloat(game.lastPlaced / game.n) * cell)
                 }
                 marks(cell: cell, side: side)
+                    .modifier(AfterLanding(trigger: drops, kingdoms: game.n, enabled: !reduceMotion, fade: 0.3))
                 if !reduceMotion {
                     Sheen(trigger: game.solveTrigger, delay: SolveTiming.finale(rows: game.n) - 0.1, side: side)
                         .allowsHitTesting(false)
@@ -63,6 +75,7 @@ struct BoardView: View {
                 }
             }
             .frame(width: side, height: side)
+            .modifier(LandingJolt(puzzle: game.puzzle, trigger: drops, enabled: !reduceMotion))
             // The entrance: the sheet is laid down with a slight turn and settles.
             .opacity(entered ? 1 : 0)
             .scaleEffect(entered || reduceMotion ? 1 : 0.94)
@@ -83,6 +96,7 @@ struct BoardView: View {
                     SpringKeyframe(1.0, duration: 0.6, spring: .bouncy)
                 }
             }
+            .onChange(of: entered) { _, now in if now { drops += 1 } }
             .contentShape(Rectangle())
             .gesture(drag(cell: cell))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -151,26 +165,27 @@ private struct WashLayer: View {
     let puzzle: Puzzle
     let claimed: Set<Int>
     let bloomed: Bool
+    /// Counts entrances; each bump drops the tiles in.
+    let drop: Int
     let inset: CGFloat
     let side: CGFloat
 
-    /// Each kingdom's place in the bloom order, top to bottom by its first cell.
-    private var rank: [Int] {
-        let first = (0..<puzzle.size).map { g in puzzle.regionOf.firstIndex(of: g) ?? 0 }
-        var rank = Array(repeating: 0, count: puzzle.size)
-        for (i, g) in (0..<puzzle.size).sorted(by: { first[$0] < first[$1] }).enumerated() { rank[g] = i }
-        return rank
-    }
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let rank = rank
+        let rank = puzzle.dropRank
         ZStack {
             ForEach(0..<puzzle.size, id: \.self) { g in
-                RegionShape(puzzle: puzzle, region: g, inset: inset)
+                let wash = RegionShape(puzzle: puzzle, region: g, inset: inset)
                     .fill(Theme.region(g))
                     .opacity(bloomed ? (claimed.contains(g) ? 1 : Theme.washUnclaimed) : 0)
                     .animation(.easeOut(duration: 0.45), value: claimed.contains(g))
-                    .animation(.easeOut(duration: Entrance.bloomFade).delay(Entrance.bloom(rank[g])), value: bloomed)
+                if reduceMotion {
+                    wash.animation(.easeOut(duration: Entrance.bloomFade).delay(Entrance.bloom(rank[g])), value: bloomed)
+                } else {
+                    wash.animation(nil, value: bloomed)
+                        .modifier(KingdomDrop(puzzle: puzzle, region: g, rank: rank[g], trigger: drop, inset: inset, side: side))
+                }
             }
         }
         .compositingGroup()
@@ -180,6 +195,336 @@ private struct WashLayer: View {
             maxSampleOffset: CGSize(width: 6, height: 6)
         )
     }
+}
+
+// MARK: Entrance
+
+extension Puzzle {
+    /// Each kingdom's place in the entrance order, top to bottom by its first cell.
+    var dropRank: [Int] {
+        let first = (0..<size).map { g in regionOf.firstIndex(of: g) ?? 0 }
+        var rank = Array(repeating: 0, count: size)
+        for (i, g) in (0..<size).sorted(by: { first[$0] < first[$1] }).enumerated() { rank[g] = i }
+        return rank
+    }
+
+    /// The ink width of the dividers between kingdoms.
+    var borderWidth: CGFloat { size > 8 ? 2.2 : 2.6 }
+
+    /// The middle of kingdom `g`'s cells, as a point in a board of `side`, so it drops and shudders about itself.
+    func centre(of g: Int, inset: CGFloat, side: CGFloat) -> UnitPoint {
+        let cells = (0..<size * size).filter { regionOf[$0] == g }
+        guard !cells.isEmpty else { return .center }
+        let x = cells.reduce(CGFloat(0)) { $0 + CGFloat($1 % size) + 0.5 } / CGFloat(cells.count)
+        let y = cells.reduce(CGFloat(0)) { $0 + CGFloat($1 / size) + 0.5 } / CGFloat(cells.count)
+        let cell = (side - inset * 2) / CGFloat(size)
+        return UnitPoint(x: (inset + x * cell) / side, y: (inset + y * cell) / side)
+    }
+}
+
+/// One kingdom's tile in the entrance: held off the sheet until its turn, then it tumbles down from above,
+/// larger and turned a few degrees (alternate kingdoms lean opposite ways), lands with a squash and a
+/// little bounce, and shudders side to side. The wash and the tile's lines both wear this with the same
+/// numbers, so they move as one piece. Rests at the landed pose, so a board shown without an entrance draws flat.
+private struct KingdomDrop: ViewModifier {
+    let start: Double
+    let anchor: UnitPoint
+    let turn: Double
+    let trigger: Int
+
+    init(puzzle: Puzzle, region g: Int, rank: Int, trigger: Int, inset: CGFloat, side: CGFloat) {
+        start = Entrance.bloom(rank)
+        anchor = puzzle.centre(of: g, inset: inset, side: side)
+        // 4 to 8 degrees, the sign alternating down the board.
+        let jitter = Double((g * 37 + 11) % 5) / 4
+        turn = (rank % 2 == 0 ? 1 : -1) * (4 + 4 * jitter)
+        self.trigger = trigger
+    }
+
+    private struct Pose {
+        var lift: CGFloat = 0
+        var shake: CGFloat = 0
+        var scale: CGFloat = 1
+        var turn: Double = 0
+        var opacity: Double = 1
+    }
+
+    func body(content: Content) -> some View {
+        let s = Entrance.shudder / 6
+        return content.keyframeAnimator(initialValue: Pose(), trigger: trigger) { view, pose in
+            view
+                .opacity(pose.opacity)
+                .rotationEffect(.degrees(pose.turn), anchor: anchor)
+                .scaleEffect(pose.scale, anchor: anchor)
+                .offset(x: pose.shake, y: -pose.lift)
+        } keyframes: { _ in
+            KeyframeTrack(\.opacity) {
+                MoveKeyframe(0)
+                LinearKeyframe(0, duration: start)
+                LinearKeyframe(1, duration: Entrance.fall * 0.4)
+            }
+            KeyframeTrack(\.lift) {
+                MoveKeyframe(Entrance.lift)
+                LinearKeyframe(Entrance.lift, duration: start)
+                LinearKeyframe(0, duration: Entrance.fall, timingCurve: .easeIn)
+                LinearKeyframe(4, duration: 0.06, timingCurve: .easeOut)
+                LinearKeyframe(0, duration: 0.07, timingCurve: .easeIn)
+                LinearKeyframe(1, duration: 0.04)
+                LinearKeyframe(0, duration: 0.04)
+            }
+            KeyframeTrack(\.scale) {
+                MoveKeyframe(1.3)
+                LinearKeyframe(1.3, duration: start)
+                LinearKeyframe(1, duration: Entrance.fall, timingCurve: .easeIn)
+                LinearKeyframe(0.96, duration: 0.04)
+                SpringKeyframe(1, duration: 0.22, spring: .bouncy)
+            }
+            KeyframeTrack(\.turn) {
+                MoveKeyframe(turn)
+                LinearKeyframe(turn, duration: start)
+                LinearKeyframe(0, duration: Entrance.fall, timingCurve: .easeIn)
+                LinearKeyframe(-turn * 0.12, duration: 0.05)
+                SpringKeyframe(0, duration: 0.2, spring: .bouncy)
+            }
+            KeyframeTrack(\.shake) {
+                MoveKeyframe(0)
+                LinearKeyframe(0, duration: start + Entrance.fall)
+                LinearKeyframe(2.8, duration: s)
+                LinearKeyframe(-2.3, duration: s)
+                LinearKeyframe(1.7, duration: s)
+                LinearKeyframe(-1.1, duration: s)
+                LinearKeyframe(0.5, duration: s)
+                LinearKeyframe(0, duration: s)
+            }
+        }
+    }
+}
+
+/// Each kingdom's own pencil grid and ink outline, riding down on its tile in the entrance. Drawn exactly
+/// where the board-wide grid and dividers sit, which take over once the last tile settles; at rest this
+/// draws nothing.
+private struct KingdomLines: View {
+    let puzzle: Puzzle
+    let trigger: Int
+    let inset: CGFloat
+    let side: CGFloat
+
+    var body: some View {
+        let n = puzzle.size
+        let rank = puzzle.dropRank
+        let handover = Entrance.settle(kingdoms: n)
+        // Always mounted (a keyframe layer inserted with the new trigger value never animates); hidden at rest.
+        ZStack {
+            ForEach(0..<n, id: \.self) { g in
+                ZStack {
+                    PencilGrid(n: n, inset: inset)
+                        .stroke(Theme.pencil, lineWidth: 1)
+                        .clipShape(RegionShape(puzzle: puzzle, region: g, inset: inset))
+                    RegionOutline(puzzle: puzzle, region: g, inset: inset)
+                        .stroke(Theme.ink, style: StrokeStyle(lineWidth: puzzle.borderWidth, lineCap: .round, lineJoin: .round))
+                        .distortionEffect(
+                            ShaderLibrary.inkWobble(.float(0.05), .float(1.6)),
+                            maxSampleOffset: CGSize(width: 2, height: 2)
+                        )
+                }
+                .modifier(KingdomDrop(puzzle: puzzle, region: g, rank: rank[g], trigger: trigger, inset: inset, side: side))
+            }
+        }
+        .frame(width: side, height: side)
+        .keyframeAnimator(initialValue: 0.0, trigger: trigger) { view, o in
+            view.opacity(o)
+        } keyframes: { _ in
+            // A hair past the handover, so the board-wide lines are already down when these go.
+            MoveKeyframe(1.0)
+            LinearKeyframe(1, duration: handover + 0.05)
+            LinearKeyframe(0, duration: 0.01)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// Kingdom `region`'s outline: every edge of its cells that meets another kingdom or the board's edge.
+struct RegionOutline: Shape {
+    let puzzle: Puzzle
+    let region: Int
+    var inset: CGFloat = 0
+
+    func path(in rect: CGRect) -> Path {
+        let n = puzzle.size
+        let cell = (min(rect.width, rect.height) - inset * 2) / CGFloat(n)
+        func pt(_ c: Int, _ r: Int) -> CGPoint { CGPoint(x: inset + CGFloat(c) * cell, y: inset + CGFloat(r) * cell) }
+        func other(_ r: Int, _ c: Int) -> Bool {
+            !(0..<n).contains(r) || !(0..<n).contains(c) || puzzle.regionOf[r * n + c] != region
+        }
+        var p = Path()
+        for i in 0..<n * n where puzzle.regionOf[i] == region {
+            let r = i / n, c = i % n
+            if other(r - 1, c) { p.move(to: pt(c, r)); p.addLine(to: pt(c + 1, r)) }
+            if other(r + 1, c) { p.move(to: pt(c, r + 1)); p.addLine(to: pt(c + 1, r + 1)) }
+            if other(r, c - 1) { p.move(to: pt(c, r)); p.addLine(to: pt(c, r + 1)) }
+            if other(r, c + 1) { p.move(to: pt(c + 1, r)); p.addLine(to: pt(c + 1, r + 1)) }
+        }
+        return p
+    }
+}
+
+/// Hides a board-wide layer (pencil grid, dividers, marks) through the entrance and brings it in as the
+/// last tile settles. Rests shown, and does nothing when `enabled` is false (Reduce Motion).
+private struct AfterLanding: ViewModifier {
+    let trigger: Int
+    let kingdoms: Int
+    let enabled: Bool
+    var fade = 0.01
+
+    func body(content: Content) -> some View {
+        content.keyframeAnimator(initialValue: 1.0, trigger: trigger) { view, o in
+            view.opacity(o)
+        } keyframes: { _ in
+            if enabled {
+                MoveKeyframe(0.0)
+                LinearKeyframe(0, duration: Entrance.settle(kingdoms: kingdoms))
+                LinearKeyframe(1, duration: fade)
+            } else {
+                MoveKeyframe(1.0)
+            }
+        }
+    }
+}
+
+/// The board jolts as each tile lands: a quick dip and a damped rebound, deeper for a bigger kingdom and
+/// deepest for the last one, which locks the board together.
+private struct LandingJolt: ViewModifier {
+    let puzzle: Puzzle
+    let trigger: Int
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        let n = puzzle.size
+        let end = Entrance.end(kingdoms: n)
+        let rank = puzzle.dropRank
+        let landings: [(at: Double, depth: Double)] = (0..<n).map { g in
+            let cells = Double(puzzle.regionOf.filter { $0 == g }.count) / Double(n)
+            let depth = min(1.2 + 0.8 * cells, 3)
+            return (Entrance.landing(rank[g]), rank[g] == n - 1 ? depth * 1.8 : depth)
+        }
+        return content.keyframeAnimator(initialValue: end, trigger: trigger) { view, t in
+            view.offset(y: landings.reduce(0) { sum, l in
+                let d = t - l.at
+                guard d > 0, d < 0.35 else { return sum }
+                return sum + l.depth * exp(-d / 0.07) * sin(2 * .pi * d / 0.12)
+            })
+        } keyframes: { _ in
+            if enabled {
+                MoveKeyframe(0.0)
+                LinearKeyframe(end, duration: end)
+            } else {
+                MoveKeyframe(end)
+            }
+        }
+    }
+}
+
+// MARK: Dust
+
+/// The puff where each kingdom's wash hits the sheet: flecks of its colour and pencil grey thrown out from
+/// its outline, and a soft cloud drifting off each side. One clock for the whole entrance; draws nothing at rest.
+private struct KingdomDust: View {
+    let puzzle: Puzzle
+    let trigger: Int
+    let inset: CGFloat
+    let side: CGFloat
+    /// Each kingdom's outer edges: a point on the edge's start, its direction, and its outward normal.
+    private let edges: [[(from: CGPoint, along: CGVector, out: CGVector)]]
+    private let rank: [Int]
+
+    init(puzzle: Puzzle, trigger: Int, inset: CGFloat, side: CGFloat) {
+        self.puzzle = puzzle
+        self.trigger = trigger
+        self.inset = inset
+        self.side = side
+        let n = puzzle.size
+        let cell = (side - inset * 2) / CGFloat(n)
+        var edges = Array(repeating: [(from: CGPoint, along: CGVector, out: CGVector)](), count: n)
+        for i in 0..<n * n {
+            let g = puzzle.regionOf[i], r = i / n, c = i % n
+            let x = inset + CGFloat(c) * cell, y = inset + CGFloat(r) * cell
+            func other(_ rr: Int, _ cc: Int) -> Bool {
+                !(0..<n).contains(rr) || !(0..<n).contains(cc) || puzzle.regionOf[rr * n + cc] != g
+            }
+            if other(r - 1, c) { edges[g].append((CGPoint(x: x, y: y), CGVector(dx: cell, dy: 0), CGVector(dx: 0, dy: -1))) }
+            if other(r + 1, c) { edges[g].append((CGPoint(x: x, y: y + cell), CGVector(dx: cell, dy: 0), CGVector(dx: 0, dy: 1))) }
+            if other(r, c - 1) { edges[g].append((CGPoint(x: x, y: y), CGVector(dx: 0, dy: cell), CGVector(dx: -1, dy: 0))) }
+            if other(r, c + 1) { edges[g].append((CGPoint(x: x + cell, y: y), CGVector(dx: 0, dy: cell), CGVector(dx: 1, dy: 0))) }
+        }
+        self.edges = edges
+        rank = puzzle.dropRank
+    }
+
+    var body: some View {
+        let n = puzzle.size
+        let cell = (side - inset * 2) / CGFloat(n)
+        let end = Entrance.end(kingdoms: n)
+        let pad = cell
+        Color.clear
+            .keyframeAnimator(initialValue: end, trigger: trigger) { _, t in
+                Canvas { ctx, _ in
+                    guard t < end else { return }
+                    ctx.translateBy(x: pad, y: pad)
+                    for g in 0..<n where !edges[g].isEmpty {
+                        let q = (t - Entrance.landing(rank[g])) / Entrance.dust
+                        guard q > 0 && q < 1 else { continue }
+                        let tint = Theme.region(g)
+                        let spread = easeOut(q)
+                        // Flecks, more for a bigger kingdom.
+                        let flecks = min(10 + edges[g].count, 26)
+                        for k in 0..<flecks {
+                            let seed = Double(g * 97 + k)
+                            let e = edges[g][Int(hash(seed) * Double(edges[g].count)) % edges[g].count]
+                            let a = hash(seed + 1)
+                            let reach = cell * (0.2 + 0.45 * hash(seed + 2))
+                            let drift = (hash(seed + 3) - 0.5) * cell * 0.5
+                            let x = e.from.x + e.along.dx * a + (e.out.dx * reach + e.out.dy * drift) * spread
+                            // Flecks rise a little, then fall as they slow.
+                            let y = e.from.y + e.along.dy * a + (e.out.dy * reach + e.out.dx * drift) * spread
+                                - cell * 0.18 * sin(.pi * q) + cell * 0.12 * q * q
+                            let r = cell * (0.025 + 0.035 * hash(seed + 4)) * (1 - 0.5 * q)
+                            let alpha = 0.85 * pow(1 - q, 1.4)
+                            let colour = hash(seed + 5) < 0.35 ? Theme.ink.opacity(0.35 * alpha) : tint.opacity(alpha)
+                            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(colour))
+                        }
+                        // A few soft clouds that swell and thin out.
+                        for k in 0..<4 {
+                            let seed = Double(g * 131 + k + 500)
+                            let e = edges[g][Int(hash(seed) * Double(edges[g].count)) % edges[g].count]
+                            let a = hash(seed + 1)
+                            let c = CGPoint(
+                                x: e.from.x + e.along.dx * a + e.out.dx * cell * 0.25 * spread,
+                                y: e.from.y + e.along.dy * a + e.out.dy * cell * 0.25 * spread - cell * 0.1 * spread
+                            )
+                            let r = cell * (0.18 + 0.3 * spread)
+                            let alpha = 0.3 * (1 - q)
+                            ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                                Gradient(colors: [tint.opacity(alpha), tint.opacity(0)]),
+                                center: c, startRadius: 0, endRadius: r))
+                        }
+                    }
+                }
+            } keyframes: { _ in
+                MoveKeyframe(0.0)
+                LinearKeyframe(end, duration: end)
+            }
+            // Room past the board's edge for the dust off the outer kingdoms, overflowing the board's square.
+            .frame(width: side + pad * 2, height: side + pad * 2)
+            .frame(width: side, height: side)
+            .allowsHitTesting(false)
+    }
+
+    private func hash(_ x: Double) -> Double {
+        let s = sin(x * 127.1 + 311.7) * 43758.5453
+        return s - floor(s)
+    }
+
+    private func easeOut(_ q: Double) -> Double { 1 - (1 - q) * (1 - q) }
 }
 
 /// All cells of one region as a single path.
@@ -253,11 +598,15 @@ private struct InkLayer: View {
     let inset: CGFloat
     let gilded: Bool
     let gildDelay: Double
+    /// The entrance trigger: the dividers wait while each kingdom's tile carries its own outline down.
+    var entering = 0
+    var enterMotion = false
 
     var body: some View {
         ZStack {
             RegionBorders(puzzle: puzzle, inset: inset)
-                .stroke(Theme.ink, style: StrokeStyle(lineWidth: puzzle.size > 8 ? 2.2 : 2.6, lineCap: .round, lineJoin: .round))
+                .stroke(Theme.ink, style: StrokeStyle(lineWidth: puzzle.borderWidth, lineCap: .round, lineJoin: .round))
+                .modifier(AfterLanding(trigger: entering, kingdoms: puzzle.size, enabled: enterMotion))
             Rectangle()
                 .inset(by: inset)
                 .stroke(Theme.ink, style: StrokeStyle(lineWidth: 3.6, lineJoin: .round))

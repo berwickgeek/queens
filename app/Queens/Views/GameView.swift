@@ -75,6 +75,10 @@ struct GameView: View {
             }
             #if DEBUG
             if UserDefaults.standard.bool(forKey: "autosolve") { game.debugSolve() }
+            // Launch with `-reenter YES` to replay the entrance once the app is warm, for recording it.
+            if UserDefaults.standard.bool(forKey: "reenter") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { reenter() }
+            }
             #endif
         }
         .onDisappear { if !locked { game.pause() } }
@@ -109,6 +113,11 @@ struct GameView: View {
     /// Clears the board and lays it down again as a fresh sheet.
     private func playAgain() {
         game.playAgain()
+        reenter()
+    }
+
+    /// Hides the board with no animation and lays it down again next run loop.
+    private func reenter() {
         var hide = Transaction()
         hide.disablesAnimations = true
         withTransaction(hide) { entered = false }

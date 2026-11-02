@@ -37,9 +37,12 @@ final class Unlock {
     /// True when a fresh start has to wait: not unlocked and today's free solves are used up.
     func blocks(_ store: ProgressStore) -> Bool {
         #if DEBUG
-        if UserDefaults.standard.bool(forKey: "dailyLimit") { return !unlocked }
-        #endif
+        // Device installs from devicectl get no StoreKit config, so there is nothing to buy.
+        // Debug builds only enforce the limit when the dailyLimit launch flag asks for it.
+        return UserDefaults.standard.bool(forKey: "dailyLimit") && !unlocked
+        #else
         return !unlocked && Self.limitReached(lifetime: store.lifetimeSolved, today: store.solvedToday)
+        #endif
     }
 
     func purchase() async {
