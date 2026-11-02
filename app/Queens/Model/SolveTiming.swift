@@ -49,22 +49,23 @@ enum Entrance {
     static let drop = 0.5
     static let land = 0.3
     /// Kingdom tiles (wash, pencil grid and ink outline) drop into the empty frame one after another,
-    /// top to bottom, starting as the sheet lands.
-    static let bloomStagger = 0.09
+    /// top to bottom, starting as the sheet lands. The gap shrinks on bigger boards so every board's
+    /// tiles are down in the time a 7x7's take.
+    static func stagger(kingdoms n: Int) -> Double { min(0.09, 0.54 / Double(max(n - 1, 1))) }
     /// Reduce Motion: each wash fades in over this instead of dropping.
     static let bloomFade = 0.35
-    static func bloom(_ rank: Int) -> Double { delay + land + Double(rank) * bloomStagger }
+    static func bloom(_ rank: Int, of n: Int) -> Double { delay + land + Double(rank) * stagger(kingdoms: n) }
     /// A tile falls `lift` points for `fall` seconds, then shudders and throws dust for `shudder` and `dust`.
     static let lift: CGFloat = 46
     static let fall = 0.28
     static let shudder = 0.22
     static let dust = 0.6
-    /// When kingdom `rank` hits the sheet.
-    static func landing(_ rank: Int) -> Double { bloom(rank) + fall }
-    /// The last tile has stopped shuddering: the board-wide lines take over and any marks fade in.
-    static func settle(kingdoms: Int) -> Double { landing(kingdoms - 1) + shudder }
+    /// When kingdom `rank` of `n` hits the sheet.
+    static func landing(_ rank: Int, of n: Int) -> Double { bloom(rank, of: n) + fall }
+    /// The last tile has stopped shuddering: the board-wide lines take over, any marks fade in and the clock starts.
+    static func settle(kingdoms: Int) -> Double { landing(kingdoms - 1, of: kingdoms) + shudder }
     /// The whole entrance, last dust settled, for a board of `kingdoms`.
-    static func end(kingdoms: Int) -> Double { landing(kingdoms - 1) + dust }
+    static func end(kingdoms: Int) -> Double { landing(kingdoms - 1, of: kingdoms) + dust }
 }
 
 /// The walk to the next stop on a province map, played once after a solve. Seconds after the

@@ -105,8 +105,12 @@ struct GameView: View {
     }
 
     /// The board's entrance, with its sound and haptic when there is a puzzle to play.
+    /// The clock waits for the last tile, or for the player to skip or touch the board.
     private func enter() {
-        if !game.complete { Haptics.shared.boardIn(kingdoms: game.n) }
+        if !game.complete {
+            Haptics.shared.boardIn(kingdoms: game.n)
+            game.holdClock(for: Entrance.settle(kingdoms: game.n))
+        }
         entered = true
     }
 

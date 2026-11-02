@@ -18,6 +18,8 @@ final class Haptics {
     /// iPad has no Taptic Engine but still plays the sounds through the same patterns.
     private let feels = CHHapticEngine.capabilitiesForHardware().supportsHaptics
     private var sounds: [String: CHHapticAudioResourceID] = [:]
+    /// The running board entrance, so a skip can cut it short.
+    private var boardInPlayer: CHHapticPatternPlayer?
 
     private init() {
         // Ambient obeys the silent switch and mixes with whatever else is playing.
@@ -91,13 +93,25 @@ final class Haptics {
             sound("sheet", at: land, volume: 0.7),
         ]
         for rank in 0..<n {
-            let t = Entrance.landing(rank)
+            let t = Entrance.landing(rank, of: n)
             // The last tile locks the board together, so it lands hardest.
             events.append(transient(at: t, intensity: rank == n - 1 ? 0.75 : 0.4, sharpness: 0.35))
             events.append(continuous(at: t + 0.01, duration: Entrance.shudder * 0.6, intensity: 0.18, sharpness: 0.6))
             events.append(sound(note(10 - n + 1 + rank), at: t, volume: 0.22))
         }
-        play(events, curves: [swell]) { soft.impactOccurred(intensity: 0.7) }
+        boardInPlayer = play(events, curves: [swell]) { soft.impactOccurred(intensity: 0.7) }
+    }
+
+    /// The entrance was skipped: cut the tile run short and land the board in one go, with the last
+    /// tile's thump and tonic.
+    func boardSkipped(kingdoms n: Int) {
+        try? boardInPlayer?.stop(atTime: CHHapticTimeImmediate)
+        boardInPlayer = nil
+        play([
+            transient(at: 0, intensity: 0.75, sharpness: 0.35),
+            continuous(at: 0.01, duration: Entrance.shudder * 0.6, intensity: 0.18, sharpness: 0.6),
+            sound(note(10), at: 0, volume: 0.22),
+        ]) { soft.impactOccurred(intensity: 0.7) }
     }
 
     /// The last crown: D5 and its octave, then a rumble that swells through the pause
@@ -252,19 +266,23 @@ final class Haptics {
         ], relativeTime: time, duration: duration)
     }
 
-    private func play(_ events: [CHHapticEvent?], curves: [CHHapticParameterCurve] = [], fallback: () -> Void = {}) {
+    @discardableResult
+    private func play(_ events: [CHHapticEvent?], curves: [CHHapticParameterCurve] = [], fallback: () -> Void = {}) -> CHHapticPatternPlayer? {
         var events = events.compactMap { $0 }
         var curves = curves
         if !feels {
             events = events.filter { $0.type == .audioCustom }
             curves = []
         }
-        guard let engine, !events.isEmpty else { fallback(); return }
+        guard let engine, !events.isEmpty else { fallback(); return nil }
         do {
             try engine.start()
-            try engine.makePlayer(with: CHHapticPattern(events: events, parameterCurves: curves)).start(atTime: CHHapticTimeImmediate)
+            let player = try engine.makePlayer(with: CHHapticPattern(events: events, parameterCurves: curves))
+            try player.start(atTime: CHHapticTimeImmediate)
+            return player
         } catch {
             fallback()
+            return nil
         }
     }
 }

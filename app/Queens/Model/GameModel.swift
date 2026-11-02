@@ -101,7 +101,7 @@ final class GameModel {
     }
 
     func elapsed(at date: Date = Date()) -> Double {
-        accumulated + (runningSince.map { date.timeIntervalSince($0) } ?? 0)
+        accumulated + (runningSince.map { max(0, date.timeIntervalSince($0)) } ?? 0)
     }
 
     // MARK: Timer
@@ -113,16 +113,30 @@ final class GameModel {
 
     func pause() {
         if let start = runningSince {
-            accumulated += Date().timeIntervalSince(start)
+            accumulated += max(0, Date().timeIntervalSince(start))
             runningSince = nil
         }
         persist()
+    }
+
+    /// Holds the running clock at its current time for `seconds`, while the board makes its entrance.
+    func holdClock(for seconds: Double) {
+        guard let start = runningSince else { return }
+        let now = Date()
+        accumulated += max(0, now.timeIntervalSince(start))
+        runningSince = now.addingTimeInterval(seconds)
+    }
+
+    /// Starts a held clock now: the player skipped the entrance or touched the board.
+    func releaseClock() {
+        if let start = runningSince, start > Date() { runningSince = Date() }
     }
 
     // MARK: Touch input. A touch that stays in one cell is a tap; leaving it starts a drag.
 
     func touchBegan(_ cell: Int) {
         guard !complete else { return }
+        releaseClock()
         dragStart = cell
         dragMoved = false
         dragMode = nil
