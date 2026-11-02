@@ -78,7 +78,7 @@ final class Haptics {
     }
 
     /// A new board: a soft swell as the sheet drops, a muffled landing, then a small thump and one quiet bar
-    /// per kingdom as its wash lands, climbing the pentatonic scale to D so the run ends on the tonic like the crowns.
+    /// per kingdom as its tile lands (the last one harder), climbing the pentatonic scale to D so the run ends on the tonic like the crowns.
     func boardIn(kingdoms n: Int) {
         let land = Entrance.delay + Entrance.land
         let swell = CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [
@@ -92,7 +92,8 @@ final class Haptics {
         ]
         for rank in 0..<n {
             let t = Entrance.landing(rank)
-            events.append(transient(at: t, intensity: 0.4, sharpness: 0.35))
+            // The last tile locks the board together, so it lands hardest.
+            events.append(transient(at: t, intensity: rank == n - 1 ? 0.75 : 0.4, sharpness: 0.35))
             events.append(continuous(at: t + 0.01, duration: Entrance.shudder * 0.6, intensity: 0.18, sharpness: 0.6))
             events.append(sound(note(10 - n + 1 + rank), at: t, volume: 0.22))
         }

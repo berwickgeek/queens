@@ -48,17 +48,21 @@ enum Entrance {
     /// The sheet drops in on a spring of this duration and lands `land` after it starts.
     static let drop = 0.5
     static let land = 0.3
-    /// Kingdom washes drop onto the sheet one after another, top to bottom, starting as the sheet lands.
-    static let bloomStagger = 0.08
+    /// Kingdom tiles (wash, pencil grid and ink outline) drop into the empty frame one after another,
+    /// top to bottom, starting as the sheet lands.
+    static let bloomStagger = 0.09
     /// Reduce Motion: each wash fades in over this instead of dropping.
     static let bloomFade = 0.35
     static func bloom(_ rank: Int) -> Double { delay + land + Double(rank) * bloomStagger }
-    /// A wash falls for this long, then shudders and throws dust for `shudder` and `dust`.
-    static let fall = 0.2
+    /// A tile falls `lift` points for `fall` seconds, then shudders and throws dust for `shudder` and `dust`.
+    static let lift: CGFloat = 46
+    static let fall = 0.28
     static let shudder = 0.22
     static let dust = 0.6
     /// When kingdom `rank` hits the sheet.
     static func landing(_ rank: Int) -> Double { bloom(rank) + fall }
+    /// The last tile has stopped shuddering: the board-wide lines take over and any marks fade in.
+    static func settle(kingdoms: Int) -> Double { landing(kingdoms - 1) + shudder }
     /// The whole entrance, last dust settled, for a board of `kingdoms`.
     static func end(kingdoms: Int) -> Double { landing(kingdoms - 1) + dust }
 }
