@@ -77,8 +77,8 @@ final class Haptics {
         ]) { heavy.impactOccurred(intensity: 1.0) }
     }
 
-    /// A new board: a soft swell as the sheet drops, a muffled landing, then one quiet bar per kingdom as
-    /// its wash blooms, climbing the pentatonic scale to D so the run ends on the tonic like the crowns.
+    /// A new board: a soft swell as the sheet drops, a muffled landing, then a small thump and one quiet bar
+    /// per kingdom as its wash lands, climbing the pentatonic scale to D so the run ends on the tonic like the crowns.
     func boardIn(kingdoms n: Int) {
         let land = Entrance.delay + Entrance.land
         let swell = CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [
@@ -91,8 +91,9 @@ final class Haptics {
             sound("sheet", at: land, volume: 0.7),
         ]
         for rank in 0..<n {
-            let t = Entrance.bloom(rank)
-            events.append(transient(at: t, intensity: 0.22, sharpness: 0.7))
+            let t = Entrance.landing(rank)
+            events.append(transient(at: t, intensity: 0.4, sharpness: 0.35))
+            events.append(continuous(at: t + 0.01, duration: Entrance.shudder * 0.6, intensity: 0.18, sharpness: 0.6))
             events.append(sound(note(10 - n + 1 + rank), at: t, volume: 0.22))
         }
         play(events, curves: [swell]) { soft.impactOccurred(intensity: 0.7) }

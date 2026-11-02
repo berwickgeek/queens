@@ -19,6 +19,9 @@ struct BoardView: View {
                 WashLayer(puzzle: game.puzzle, claimed: game.claimedRegions, bloomed: entered, inset: inset, side: side)
                 PencilGrid(n: game.n, inset: inset)
                     .stroke(Theme.pencil, lineWidth: 1)
+                if !reduceMotion {
+                    KingdomDust(puzzle: game.puzzle, trigger: entered, inset: inset, side: side)
+                }
                 // Celebration layers stay mounted and draw nothing at rest, so a trigger bump always animates.
                 if !reduceMotion {
                     KingdomRipple(puzzle: game.puzzle, trigger: game.solveTrigger, inset: inset, side: side)
@@ -162,15 +165,22 @@ private struct WashLayer: View {
         return rank
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         let rank = rank
         ZStack {
             ForEach(0..<puzzle.size, id: \.self) { g in
-                RegionShape(puzzle: puzzle, region: g, inset: inset)
+                let wash = RegionShape(puzzle: puzzle, region: g, inset: inset)
                     .fill(Theme.region(g))
                     .opacity(bloomed ? (claimed.contains(g) ? 1 : Theme.washUnclaimed) : 0)
                     .animation(.easeOut(duration: 0.45), value: claimed.contains(g))
-                    .animation(.easeOut(duration: Entrance.bloomFade).delay(Entrance.bloom(rank[g])), value: bloomed)
+                if reduceMotion {
+                    wash.animation(.easeOut(duration: Entrance.bloomFade).delay(Entrance.bloom(rank[g])), value: bloomed)
+                } else {
+                    wash.animation(nil, value: bloomed)
+                        .modifier(WashDrop(trigger: bloomed, start: Entrance.bloom(rank[g]), anchor: centre(g)))
+                }
             }
         }
         .compositingGroup()
@@ -180,6 +190,181 @@ private struct WashLayer: View {
             maxSampleOffset: CGSize(width: 6, height: 6)
         )
     }
+
+    /// The middle of kingdom `g`'s cells, as a point in the board, so it drops and shudders about itself.
+    private func centre(_ g: Int) -> UnitPoint {
+        let n = puzzle.size
+        let cells = (0..<n * n).filter { puzzle.regionOf[$0] == g }
+        guard !cells.isEmpty else { return .center }
+        let x = cells.reduce(CGFloat(0)) { $0 + CGFloat($1 % n) + 0.5 } / CGFloat(cells.count)
+        let y = cells.reduce(CGFloat(0)) { $0 + CGFloat($1 / n) + 0.5 } / CGFloat(cells.count)
+        let cell = (side - inset * 2) / CGFloat(n)
+        return UnitPoint(x: (inset + x * cell) / side, y: (inset + y * cell) / side)
+    }
+}
+
+/// One kingdom's wash in the entrance: held off the sheet until `start`, then it falls from a little
+/// above and larger, lands with a squash, and shudders side to side. Rests at the landed values, so a
+/// board shown without an entrance draws flat.
+private struct WashDrop: ViewModifier {
+    let trigger: Bool
+    let start: Double
+    let anchor: UnitPoint
+
+    private struct Pose {
+        var lift: CGFloat = 0
+        var shake: CGFloat = 0
+        var scale: CGFloat = 1
+        var opacity: Double = 1
+    }
+
+    func body(content: Content) -> some View {
+        let s = Entrance.shudder / 6
+        return content.keyframeAnimator(initialValue: Pose(), trigger: trigger) { view, pose in
+            view
+                .opacity(pose.opacity)
+                .scaleEffect(pose.scale, anchor: anchor)
+                .offset(x: pose.shake, y: -pose.lift)
+        } keyframes: { _ in
+            KeyframeTrack(\.opacity) {
+                MoveKeyframe(0)
+                LinearKeyframe(0, duration: start)
+                LinearKeyframe(1, duration: Entrance.fall * 0.6)
+            }
+            KeyframeTrack(\.lift) {
+                MoveKeyframe(30)
+                LinearKeyframe(30, duration: start)
+                LinearKeyframe(0, duration: Entrance.fall, timingCurve: .easeIn)
+                LinearKeyframe(3, duration: 0.05, timingCurve: .easeOut)
+                LinearKeyframe(0, duration: 0.06, timingCurve: .easeIn)
+                LinearKeyframe(0.8, duration: 0.04)
+                LinearKeyframe(0, duration: 0.04)
+            }
+            KeyframeTrack(\.scale) {
+                MoveKeyframe(1.14)
+                LinearKeyframe(1.14, duration: start)
+                LinearKeyframe(1, duration: Entrance.fall, timingCurve: .easeIn)
+                LinearKeyframe(0.97, duration: 0.04)
+                SpringKeyframe(1, duration: 0.2, spring: .bouncy)
+            }
+            KeyframeTrack(\.shake) {
+                MoveKeyframe(0)
+                LinearKeyframe(0, duration: start + Entrance.fall)
+                LinearKeyframe(2.4, duration: s)
+                LinearKeyframe(-2.0, duration: s)
+                LinearKeyframe(1.5, duration: s)
+                LinearKeyframe(-1.0, duration: s)
+                LinearKeyframe(0.5, duration: s)
+                LinearKeyframe(0, duration: s)
+            }
+        }
+    }
+}
+
+// MARK: Dust
+
+/// The puff where each kingdom's wash hits the sheet: flecks of its colour and pencil grey thrown out from
+/// its outline, and a soft cloud drifting off each side. One clock for the whole entrance; draws nothing at rest.
+private struct KingdomDust: View {
+    let puzzle: Puzzle
+    let trigger: Bool
+    let inset: CGFloat
+    let side: CGFloat
+    /// Each kingdom's outer edges: a point on the edge's start, its direction, and its outward normal.
+    private let edges: [[(from: CGPoint, along: CGVector, out: CGVector)]]
+    private let rank: [Int]
+
+    init(puzzle: Puzzle, trigger: Bool, inset: CGFloat, side: CGFloat) {
+        self.puzzle = puzzle
+        self.trigger = trigger
+        self.inset = inset
+        self.side = side
+        let n = puzzle.size
+        let cell = (side - inset * 2) / CGFloat(n)
+        var edges = Array(repeating: [(from: CGPoint, along: CGVector, out: CGVector)](), count: n)
+        for i in 0..<n * n {
+            let g = puzzle.regionOf[i], r = i / n, c = i % n
+            let x = inset + CGFloat(c) * cell, y = inset + CGFloat(r) * cell
+            func other(_ rr: Int, _ cc: Int) -> Bool {
+                !(0..<n).contains(rr) || !(0..<n).contains(cc) || puzzle.regionOf[rr * n + cc] != g
+            }
+            if other(r - 1, c) { edges[g].append((CGPoint(x: x, y: y), CGVector(dx: cell, dy: 0), CGVector(dx: 0, dy: -1))) }
+            if other(r + 1, c) { edges[g].append((CGPoint(x: x, y: y + cell), CGVector(dx: cell, dy: 0), CGVector(dx: 0, dy: 1))) }
+            if other(r, c - 1) { edges[g].append((CGPoint(x: x, y: y), CGVector(dx: 0, dy: cell), CGVector(dx: -1, dy: 0))) }
+            if other(r, c + 1) { edges[g].append((CGPoint(x: x + cell, y: y), CGVector(dx: 0, dy: cell), CGVector(dx: 1, dy: 0))) }
+        }
+        self.edges = edges
+        let first = (0..<n).map { g in puzzle.regionOf.firstIndex(of: g) ?? 0 }
+        var rank = Array(repeating: 0, count: n)
+        for (k, g) in (0..<n).sorted(by: { first[$0] < first[$1] }).enumerated() { rank[g] = k }
+        self.rank = rank
+    }
+
+    var body: some View {
+        let n = puzzle.size
+        let cell = (side - inset * 2) / CGFloat(n)
+        let end = Entrance.end(kingdoms: n)
+        let pad = cell
+        Color.clear
+            .keyframeAnimator(initialValue: end, trigger: trigger) { _, t in
+                Canvas { ctx, _ in
+                    guard t < end else { return }
+                    ctx.translateBy(x: pad, y: pad)
+                    for g in 0..<n where !edges[g].isEmpty {
+                        let q = (t - Entrance.landing(rank[g])) / Entrance.dust
+                        guard q > 0 && q < 1 else { continue }
+                        let tint = Theme.region(g)
+                        let spread = easeOut(q)
+                        // Flecks, more for a bigger kingdom.
+                        let flecks = min(10 + edges[g].count, 26)
+                        for k in 0..<flecks {
+                            let seed = Double(g * 97 + k)
+                            let e = edges[g][Int(hash(seed) * Double(edges[g].count)) % edges[g].count]
+                            let a = hash(seed + 1)
+                            let reach = cell * (0.2 + 0.45 * hash(seed + 2))
+                            let drift = (hash(seed + 3) - 0.5) * cell * 0.5
+                            let x = e.from.x + e.along.dx * a + (e.out.dx * reach + e.out.dy * drift) * spread
+                            // Flecks rise a little, then fall as they slow.
+                            let y = e.from.y + e.along.dy * a + (e.out.dy * reach + e.out.dx * drift) * spread
+                                - cell * 0.18 * sin(.pi * q) + cell * 0.12 * q * q
+                            let r = cell * (0.025 + 0.035 * hash(seed + 4)) * (1 - 0.5 * q)
+                            let alpha = 0.85 * pow(1 - q, 1.4)
+                            let colour = hash(seed + 5) < 0.35 ? Theme.ink.opacity(0.35 * alpha) : tint.opacity(alpha)
+                            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)), with: .color(colour))
+                        }
+                        // A few soft clouds that swell and thin out.
+                        for k in 0..<4 {
+                            let seed = Double(g * 131 + k + 500)
+                            let e = edges[g][Int(hash(seed) * Double(edges[g].count)) % edges[g].count]
+                            let a = hash(seed + 1)
+                            let c = CGPoint(
+                                x: e.from.x + e.along.dx * a + e.out.dx * cell * 0.25 * spread,
+                                y: e.from.y + e.along.dy * a + e.out.dy * cell * 0.25 * spread - cell * 0.1 * spread
+                            )
+                            let r = cell * (0.18 + 0.3 * spread)
+                            let alpha = 0.3 * (1 - q)
+                            ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .radialGradient(
+                                Gradient(colors: [tint.opacity(alpha), tint.opacity(0)]),
+                                center: c, startRadius: 0, endRadius: r))
+                        }
+                    }
+                }
+            } keyframes: { _ in
+                MoveKeyframe(0.0)
+                LinearKeyframe(end, duration: end)
+            }
+            // Room past the board's edge for the dust off the outer kingdoms, overflowing the board's square.
+            .frame(width: side + pad * 2, height: side + pad * 2)
+            .frame(width: side, height: side)
+            .allowsHitTesting(false)
+    }
+
+    private func hash(_ x: Double) -> Double {
+        let s = sin(x * 127.1 + 311.7) * 43758.5453
+        return s - floor(s)
+    }
+
+    private func easeOut(_ q: Double) -> Double { 1 - (1 - q) * (1 - q) }
 }
 
 /// All cells of one region as a single path.
