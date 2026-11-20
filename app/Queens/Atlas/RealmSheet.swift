@@ -12,13 +12,14 @@ enum RealmSheet {
         var pencil: AtlasDrawing
     }
 
-    /// Both terrain drawings for a realm, built once per launch off the main thread.
-    @MainActor static func terrain(size: Int) async -> Terrain {
-        if let cached = cache[size] { return cached }
+    /// Both terrain drawings for one of a realm's charts, built once per launch off the main thread.
+    @MainActor static func terrain(size: Int, chart: Int = 0) async -> Terrain {
+        let key = size * 10 + chart
+        if let cached = cache[key] { return cached }
         let built = await Task.detached(priority: .userInitiated) {
-            Terrain(ink: terrain(size: size, pencil: false), pencil: terrain(size: size, pencil: true))
+            Terrain(ink: terrain(size: size, chart: chart, pencil: false), pencil: terrain(size: size, chart: chart, pencil: true))
         }.value
-        cache[size] = built
+        cache[key] = built
         return built
     }
 
@@ -29,16 +30,17 @@ enum RealmSheet {
     // MARK: Terrain
 
     /// Coasts, borders, islands and each province's country. Placement draws from its own
-    /// generator so the pencilled and inked sheets put every feature in the same place.
-    static func terrain(size: Int, pencil: Bool) -> AtlasDrawing {
-        var t = AtlasSketch(seed: size * 100 + 1, pencil: pencil)
+    /// generator so the pencilled and inked sheets put every feature in the same place. Later
+    /// charts share the coasts and draw their country from other seeds.
+    static func terrain(size: Int, chart: Int = 0, pencil: Bool) -> AtlasDrawing {
+        var t = AtlasSketch(seed: size * 100 + 1 + chart * 10_000, pencil: pencil)
         t.wash(R.sea, Theme.Atlas.sea, opacity: 0.45 * 0.9)
         for shore in 0..<2 {
             t.coast(R.coastline(shore))
             for isle in L.isles {
                 t.isle(pt(isle.x, L.bandBottom(shore * Journey.provincesPerShore + Journey.provincesPerShore - 1) + isle.dy), radius: isle.r)
             }
-            var place = AtlasRandom(seed: size * 100 + shore * 7 + 21)
+            var place = AtlasRandom(seed: size * 100 + shore * 7 + 21 + chart * 10_000)
             country(&t, shore: shore, place: &place)
         }
         return t.drawing
@@ -138,26 +140,34 @@ enum RealmSheet {
 
     /// The road, castles, province names and the sheet's furniture for the traveller's progress.
     /// Always inked: a pencilled province still shows its name and the dotted road ahead.
-    static func live(size: Int, states: [Journey.StopState]) -> AtlasDrawing {
-        var s = AtlasSketch(seed: size * 100 + 50)
+    /// `states` is the whole realm's; only `chart`'s twelve provinces are drawn.
+    static func live(size: Int, chart: Int = 0, states: [Journey.StopState]) -> AtlasDrawing {
+        var s = AtlasSketch(seed: size * 100 + 50 + chart * 10_000)
         let provinces = Journey.provinceStates(states)
-        let route = R.route(size: size, stops: states.count)
+        let route = R.route(size: size, chart: chart, stops: states.count)
+        let first = chart * Journey.stopsPerChart
+        let stops = first..<min(states.count, first + Journey.stopsPerChart)
+        let current = states.firstIndex(of: .current).flatMap { stops.contains($0) ? $0 : nil }
 
-        if let current = states.firstIndex(of: .current) {
-            let split = route.stops[current] + 1
+        if let current {
+            let split = route.stops[current - first] + 1
             s.road(Array(route.points[..<split]), weight: 0.85)
             s.pencilRoad(Array(route.points[(split - 1)...]))
+        } else if states.firstIndex(of: .current).map({ $0 < first }) == true {
+            s.pencilRoad(route.points)
         } else {
             s.road(route.points, weight: 0.85)
         }
 
-        func stop(_ i: Int) -> CGPoint { route.points[route.stops[i]] }
-        for (i, state) in states.enumerated() where state == .skipped {
+        func stop(_ i: Int) -> CGPoint { route.points[route.stops[i - first]] }
+        for i in stops where states[i] == .skipped {
             let ring = AtlasGeometry.ring(stop(i), radius: 3.6, rng: &s.rng)
             s.line(ring, width: 0.8, wander: 0.2, press: false)
         }
 
-        for (p, state) in provinces.enumerated() {
+        let chartProvinces = chart * Journey.provincesPerChart ..< min(provinces.count, (chart + 1) * Journey.provincesPerChart)
+        for p in chartProvinces {
+            let state = provinces[p]
             let province = Journey.Province(size: size, index: p)
             let slice = states[(p * Journey.stopsPerProvince)..<min(states.count, (p + 1) * Journey.stopsPerProvince)]
             if !province.isles, let last = slice.indices.last {
@@ -183,13 +193,15 @@ enum RealmSheet {
             s.label(info.0, at: pt(at.x, at.y + 13), size: 8.5, italic: true, color: info.1, opacity: 0.85, anchor: .middle, rotation: 0)
         }
 
-        if let current = states.firstIndex(of: .current) {
+        if let current {
             let c = stop(current)
             s.seal(at: c, radius: 9)
             s.label("No. \(current + 1)", at: pt(c.x + 18, c.y + 4), size: 10, color: Theme.Atlas.road, rotation: 0)
         }
 
-        s.cartouche(at: pt(98, 52), title: Naming.realm(size).name, subtitle: "a realm in twelve provinces")
+        let charts = Journey.charts(puzzleCount: states.count)
+        s.cartouche(at: pt(98, 52), title: Naming.realm(size).name,
+                    subtitle: charts == 1 ? "a realm in twelve provinces" : Naming.chart(chart, of: charts))
         s.compass(at: pt(352, 1230))
         s.ship(at: pt(250, 690))
         s.serpent(at: pt(90, 710))
@@ -197,8 +209,8 @@ enum RealmSheet {
         return s.drawing
     }
 
-    /// Ink runs up to the current stop, or over the whole sheet once the realm is crowned.
-    static func boundary(size: Int, states: [Journey.StopState]) -> CGFloat {
-        R.boundary(size: size, states: states)
+    /// Ink runs up to the current stop, or over the whole chart once its provinces are crowned.
+    static func boundary(size: Int, chart: Int = 0, states: [Journey.StopState]) -> CGFloat {
+        R.boundary(size: size, chart: chart, states: states)
     }
 }

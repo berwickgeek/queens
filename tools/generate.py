@@ -372,7 +372,55 @@ def extend(count, tier):
     print("wrote", os.path.abspath(dest))
 
 
+def spread(found, count):
+    """Dedupe, sort easiest to hardest and keep an even spread of `count`."""
+    seen = set()
+    uniq = []
+    for p in found:
+        if p["regions"] not in seen:
+            seen.add(p["regions"])
+            uniq.append(p)
+    uniq.sort(key=lambda p: p["score"])
+    if len(uniq) > count:
+        step = len(uniq) / count
+        uniq = [uniq[int(i * step)] for i in range(count)]
+    return uniq
+
+
+def add_sets(sets, sizes):
+    """Append `sets` sets of 120 to each size, each spread easiest to hardest like the first
+    set. Existing ids stay put, so progress survives."""
+    dest = os.path.join(os.path.dirname(__file__), "..", "app", "Queens", "Resources", "puzzles.json")
+    with open(dest) as f:
+        out = json.load(f)
+    with Pool(os.cpu_count()) as pool:
+        for n in sizes:
+            have = out[str(n)]
+            for _ in range(sets):
+                seen = {p["regions"] for p in have}
+                k = len(have) // 120
+                # Seeds from 700k up never overlap the first run's or --extend's.
+                base = n * 1_000_000 + 700_000 + k * 10_000
+                jobs = [(n, base + i) for i in range(int(120 * 1.6))]
+                got = [p for p in pool.map(make_one, jobs, chunksize=4) if p and p["regions"] not in seen]
+                fresh = spread(got, 120)
+                for i, p in enumerate(fresh):
+                    p["id"] = f"{n}-{len(have) + i + 1:03d}"
+                have.extend(fresh)
+                tiers = {}
+                for p in fresh:
+                    tiers[p["tier"]] = tiers.get(p["tier"], 0) + 1
+                print(f"size {n}: +{len(fresh)}, now {len(have)}, tiers {dict(sorted(tiers.items()))}", flush=True)
+                with open(dest, "w") as f:
+                    json.dump(out, f, separators=(",", ":"))
+    print("wrote", os.path.abspath(dest))
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--sets":
+        # e.g. `generate.py --sets 2 7 8 9` adds two spread sets of 120 to sizes 7, 8 and 9.
+        add_sets(int(sys.argv[2]), [int(s) for s in sys.argv[3:]])
+        return
     if len(sys.argv) > 1 and sys.argv[1] == "--extend":
         # e.g. `generate.py --extend 120 3` adds 120 medium (tier 3) puzzles per size.
         extend(int(sys.argv[2]), int(sys.argv[3]))
@@ -384,17 +432,7 @@ def main():
             # Over-generate so the set spans a range of difficulty.
             jobs = [(n, n * 1_000_000 + i) for i in range(int(per_size * 1.6))]
             got = [p for p in pool.map(make_one, jobs, chunksize=4) if p]
-            seen = set()
-            uniq = []
-            for p in got:
-                if p["regions"] not in seen:
-                    seen.add(p["regions"])
-                    uniq.append(p)
-            uniq.sort(key=lambda p: p["score"])
-            # Keep an even spread from easiest to hardest.
-            if len(uniq) > per_size:
-                step = len(uniq) / per_size
-                uniq = [uniq[int(i * step)] for i in range(per_size)]
+            uniq = spread(got, per_size)
             for i, p in enumerate(uniq):
                 p["id"] = f"{n}-{i + 1:03d}"
             out[str(n)] = uniq

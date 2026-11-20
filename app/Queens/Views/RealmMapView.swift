@@ -1,11 +1,15 @@
 import SwiftUI
 
 /// A realm as one long map: twelve provinces climbing two shores, inked as far as the traveller
-/// has gone and pencilled beyond. Tapping a province opens it; the slim card goes to the next puzzle.
+/// has gone and pencilled beyond. A realm of more than 240 puzzles has more charts of twelve; the
+/// map opens on the traveller's and the toolbar turns to the others. Tapping a province opens
+/// it; the slim card goes to the next puzzle.
 struct RealmMapView: View {
     let size: Int
     @Environment(ProgressStore.self) private var store
-    @State private var terrain: RealmSheet.Terrain?
+    @State private var terrain: (chart: Int, sheets: RealmSheet.Terrain)?
+    /// The chart on show; nil until turned, meaning the traveller's.
+    @State private var turned: Int?
 
     private typealias L = Journey.Layout
 
@@ -14,23 +18,27 @@ struct RealmMapView: View {
         let states = Journey.stopStates(solved: store.solvedFlags(size: size))
         let provinces = Journey.provinceStates(states)
         let current = states.firstIndex(of: .current)
+        let charts = Journey.charts(puzzleCount: puzzles.count)
+        let chart = turned ?? min(charts - 1, (current ?? states.count - 1) / Journey.stopsPerChart)
         ScrollView {
             ZStack {
-                if let terrain {
+                if let terrain = terrain.flatMap({ $0.chart == chart ? $0.sheets : nil }) {
                     AtlasSheet(pencil: terrain.pencil, ink: terrain.ink, height: L.realmHeight,
-                               boundary: RealmSheet.boundary(size: size, states: states))
+                               boundary: RealmSheet.boundary(size: size, chart: chart, states: states))
                 } else {
                     AtlasPaper()
                 }
-                AtlasCanvas(drawing: RealmSheet.live(size: size, states: states), height: L.realmHeight)
-                bands(provinces, states: states)
+                AtlasCanvas(drawing: RealmSheet.live(size: size, chart: chart, states: states), height: L.realmHeight)
+                bands(provinces, chart: chart, states: states)
             }
             .aspectRatio(L.width / L.realmHeight, contentMode: .fit)
             .frame(maxWidth: 640)
             .frame(maxWidth: .infinity)
         }
         // Opens on the current province. scrollTo cannot find the bands inside their GeometryReader.
-        .defaultScrollAnchor(UnitPoint(x: 0.5, y: focus(current)))
+        .defaultScrollAnchor(UnitPoint(x: 0.5, y: focus(current, chart: chart)))
+        // A new identity per chart, so turning the chart scrolls to its own anchor.
+        .id(chart)
         .background(Theme.Atlas.paper)
         .safeAreaInset(edge: .bottom) {
             if let current {
@@ -46,10 +54,28 @@ struct RealmMapView: View {
                 .frame(maxWidth: 640)
             }
         }
-        .task { terrain = await RealmSheet.terrain(size: size) }
+        .task(id: chart) { terrain = (chart, await RealmSheet.terrain(size: size, chart: chart)) }
         .navigationTitle("Realm")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if charts > 1 {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Chart", selection: Binding(get: { chart }, set: { turned = $0 })) {
+                            ForEach(0..<charts, id: \.self) { c in
+                                let first = Journey.Province(size: size, index: c * Journey.provincesPerChart)
+                                Text("Chart \(c + 1): \(first.name) onward").tag(c)
+                            }
+                        }
+                    } label: {
+                        Label("Chart \(chart + 1)", systemImage: "map")
+                            .labelStyle(.titleAndIcon)
+                            .font(.sans(13, .bold))
+                            .foregroundStyle(Theme.ink)
+                    }
+                    .accessibilityLabel("Chart \(chart + 1) of \(charts)")
+                }
+            }
             ToolbarItem(placement: .principal) {
                 VStack(spacing: 0) {
                     Text(Naming.realm(size).name).font(.serif(18)).foregroundStyle(Theme.ink)
@@ -61,17 +87,19 @@ struct RealmMapView: View {
         }
     }
 
-    /// The current province's band centre as a fraction of the sheet height, for the opening scroll.
-    private func focus(_ current: Int?) -> CGFloat {
-        guard let current else { return 1 }
+    /// The current province's band centre as a fraction of the sheet height, for the opening
+    /// scroll. The bottom of a chart the traveller is not on.
+    private func focus(_ current: Int?, chart: Int) -> CGFloat {
+        guard let current, current / Journey.stopsPerChart == chart else { return 1 }
         return (L.bandBottom(current / Journey.stopsPerProvince) - L.band / 2) / L.realmHeight
     }
 
-    /// A clear tap target over each province's band.
-    private func bands(_ provinces: [Journey.ProvinceState], states: [Journey.StopState]) -> some View {
+    /// A clear tap target over each of the chart's province bands.
+    private func bands(_ provinces: [Journey.ProvinceState], chart: Int, states: [Journey.StopState]) -> some View {
         GeometryReader { geo in
             let k = geo.size.width / L.width
-            ForEach(provinces.indices, id: \.self) { i in
+            let first = chart * Journey.provincesPerChart
+            ForEach(first..<min(provinces.count, first + Journey.provincesPerChart), id: \.self) { i in
                 NavigationLink(value: Route.province(size, i)) {
                     Color.clear.contentShape(Rectangle())
                 }
