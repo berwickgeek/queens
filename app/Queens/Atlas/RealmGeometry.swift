@@ -76,20 +76,22 @@ enum RealmGeometry {
         return abs(x - c.x) < 60 && y > c.y - 16 && y < c.y + 18
     }
 
-    /// The road in travel order and the index of each stop on it. Land provinces follow the
-    /// winding road; the crossings to and between islands bow like a province road.
-    static func route(size: Int, stops count: Int) -> (points: [CGPoint], stops: [Int]) {
+    /// One chart's road in travel order and the index of each of its stops on it, counted from
+    /// the chart's first stop. `count` is the realm's stops. Land provinces follow the winding
+    /// road; the crossings to and between islands bow like a province road.
+    static func route(size: Int, chart: Int = 0, stops count: Int) -> (points: [CGPoint], stops: [Int]) {
         func stop(_ i: Int) -> CGPoint {
             L.realmStop(Journey.Province(size: size, index: i / Journey.stopsPerProvince), i % Journey.stopsPerProvince)
         }
         func onIsles(_ i: Int) -> Bool { (i / Journey.stopsPerProvince) % Journey.provincesPerShore == Journey.provincesPerShore - 1 }
-        guard count > 0 else { return ([], []) }
+        let first = chart * Journey.stopsPerChart
+        guard count > first else { return ([], []) }
         let start = L.bandBottom(0)
         var points = [CGPoint(x: L.roadX(start), y: start)]
         var stops: [Int] = []
-        for i in 0..<count {
+        for i in first..<min(count, first + Journey.stopsPerChart) {
             let a = points[points.count - 1], b = stop(i)
-            if i > 0 && (onIsles(i) || onIsles(i - 1)) {
+            if i > first && (onIsles(i) || onIsles(i - 1)) {
                 points += AtlasGeometry.roadSegment(a, b, index: i)
             } else {
                 points += (1...3).map { k in
@@ -102,10 +104,14 @@ enum RealmGeometry {
         return (points, stops)
     }
 
-    /// Where the ink meets the pencil: just above the current stop, or past the top of the
-    /// sheet once every stop is solved.
-    static func boundary(size: Int, states: [Journey.StopState]) -> CGFloat {
-        guard let current = states.firstIndex(of: .current) else { return states.isEmpty ? L.realmHeight : -40 }
+    /// Where the ink meets the pencil on a chart: just above the current stop, past the top of
+    /// the sheet once every stop on it is solved, or below the bottom on a chart not reached yet.
+    static func boundary(size: Int, chart: Int = 0, states: [Journey.StopState]) -> CGFloat {
+        let first = chart * Journey.stopsPerChart
+        guard states.count > first else { return L.realmHeight }
+        guard let current = states.firstIndex(of: .current) else { return -40 }
+        if current >= first + Journey.stopsPerChart { return -40 }
+        if current < first { return L.realmHeight }
         let province = Journey.Province(size: size, index: current / Journey.stopsPerProvince)
         return L.realmStop(province, current % Journey.stopsPerProvince).y - 14
     }

@@ -5,6 +5,7 @@ Crowns: offline crown-placing logic puzzle (Queens genre) for iPhone. Internal n
 Before touching UI, read DESIGN.md and PATTERNS.md and reuse the exemplar files.
 
 - Puzzles: `python3 tools/generate.py 120` writes `app/Queens/Resources/puzzles.json` (about 25 min, size 11 is most of it).
+- More puzzles without disturbing progress: `python3 tools/generate.py --sets 2 7 8 9` appends two sets of 120 to sizes 7 to 9 with new ids (30 s). A size past 240 gets a second realm chart; give it 12 more province names in `Naming.swift`.
 - Icon and colour assets: `python3 tools/make_assets.py`.
 - Sounds: `python3 tools/make_sounds.py` writes the WAVs to `app/Queens/Resources/Sounds` (needs numpy, under a second).
 - Build: `cd app && xcodegen generate`, then build the Queens scheme in Xcode or with xcodebuild.

@@ -14,15 +14,21 @@ enum Naming {
         }
     }
 
-    /// Twelve provinces per realm: six on the near shore, then six across the sea. The last of
-    /// each shore is a scatter of islands.
+    /// Twelve provinces per chart: six on the near shore, then six across the sea. The last of
+    /// each shore is a scatter of islands. The Hamlets, Shires and Duchies have a second chart.
     private static let provinces: [Int: [String]] = [
         7: ["Thornwick", "Brackenmere", "Saltreach", "Hollowdeep", "Emberfell", "The Crown Isles",
-            "Larkspur", "Mistlecombe", "Gullhaven", "Cindermoor", "Briarwatch", "The Lantern Isles"],
+            "Larkspur", "Mistlecombe", "Gullhaven", "Cindermoor", "Briarwatch", "The Lantern Isles",
+            "Hazelwick", "Puddlecombe", "Marigold Vale", "Tanglewood", "Crookback", "The Sparrow Isles",
+            "Dewbury", "Brindlemoor", "Chalkhythe", "Wolfsbane", "Kingsbarrow", "The Candle Isles"],
         8: ["Oakhurst", "Fernhollow", "Kestrel Down", "Ashbourne", "Wyrmwood", "The Gilded Isles",
-            "Pennywhistle", "Rookmere", "Harrowgate", "Dunmarrow", "Stormholt", "The Amber Isles"],
+            "Pennywhistle", "Rookmere", "Harrowgate", "Dunmarrow", "Stormholt", "The Amber Isles",
+            "Bramblecote", "Hartsford", "Little Sorrow", "Elderholt", "Grimstone", "The Coral Isles",
+            "Merrivale", "Shiverstone", "Badgerhame", "Blackwater", "Thunderhold", "The Silver Isles"],
         9: ["Willowmere", "Copperleigh", "Ravenscar", "Mossgarth", "Highcrag", "The Thistle Isles",
-            "Bellbrook", "Foxglove", "Sablewood", "Greywater", "Wintermarch", "The Pearl Isles"],
+            "Bellbrook", "Foxglove", "Sablewood", "Greywater", "Wintermarch", "The Pearl Isles",
+            "Quillfeather", "Rushmere", "Hollyhock", "Ashenvale", "Ironridge", "The Moonlit Isles",
+            "Cobblestone", "Wrenwood", "Saltmarsh", "Duskhallow", "Eaglecrown", "The Ivory Isles"],
         10: ["Applecross", "Heronsford", "Blackthorn", "Duskmoor", "Ironhelm", "The Velvet Isles",
              "Primrose", "Starling Fen", "Coldharbour", "Mirefield", "Frostpeak", "The Quiet Isles"],
         11: ["Honeydew", "Swallowtail", "Cragmere", "Nightvale", "Sunspire", "The Far Isles",
@@ -52,12 +58,27 @@ enum Naming {
         "Tor", "Cleave", "Haven", "Burn", "Pike", "Wick", "Croft",
     ]
 
+    /// Adjectives for the second chart (puzzles 241 to 480), none shared with `adjectives`, so
+    /// its names never repeat the first chart's.
+    private static let farAdjectives = [
+        "Ashen", "Briny", "Copper", "Dappled", "Elder", "Foxed", "Golden", "Hazel",
+        "Iron", "Jackdaw's", "Kestrel's", "Linden", "Misty", "Nightjar's", "Oaken", "Primrose",
+        "Quiet", "Rowan", "Silver", "Tawny", "Unicorn's", "Vesper", "Wistful", "Yew",
+    ]
+
     /// 24 adjectives x 25 places give 600 distinct pairs (coprime counts); the
     /// multiplier scatters them so neighbouring puzzles do not read alphabetically.
     static func puzzleName(size: Int, number: Int) -> String {
         let set = (number - 1) / 120
         let g = ((size - 7) * 120 + (number - 1) % 120) * 367 % 600
-        let place = set == 0 ? places[g % places.count] : farPlaces[g % farPlaces.count]
-        return "The \(adjectives[g % adjectives.count]) \(place)"
+        let place = set % 2 == 0 ? places[g % places.count] : farPlaces[g % farPlaces.count]
+        let adjective = set < 2 ? adjectives[g % adjectives.count] : farAdjectives[g % farAdjectives.count]
+        return "The \(adjective) \(place)"
+    }
+
+    /// The realm cartouche's subtitle when a realm has more than one chart.
+    static func chart(_ chart: Int, of count: Int) -> String {
+        let words = ["one", "two", "three", "four"]
+        return "chart \(words[min(chart, 3)]) of \(words[min(count - 1, 3)])"
     }
 }

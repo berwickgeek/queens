@@ -1,22 +1,27 @@
 import Foundation
 
-/// The journey across a realm. A realm's 240 puzzles are 12 provinces of 20 stops on one map
-/// sheet: provinces 1 to 6 are the near shore (the first set), a sea crossing, then 7 to 12 on
-/// the far shore (the second set, whose puzzle names already use `Naming`'s far places).
+/// The journey across a realm. Every 240 puzzles are 12 provinces of 20 stops on one chart (map
+/// sheet): provinces 1 to 6 are the near shore, a sea crossing, then 7 to 12 on the far shore. A
+/// realm with 480 puzzles has a second chart, provinces 13 to 24, laid out the same way.
 enum Journey {
     static let stopsPerProvince = 20
     static let provincesPerShore = 6
+    static let provincesPerChart = 12
+    static let stopsPerChart = stopsPerProvince * provincesPerChart
+
+    static func charts(puzzleCount: Int) -> Int { max(1, (puzzleCount + stopsPerChart - 1) / stopsPerChart) }
 
     struct Province: Hashable, Identifiable {
         let size: Int
-        /// 0-based, 0 to 11.
+        /// 0-based across the whole realm, so 12 is the first province of the second chart.
         let index: Int
 
         var id: String { "\(size)-p\(index)" }
         var name: String { Naming.province(size: size, index: index) }
         /// Puzzle numbers on this province's road.
         var numbers: ClosedRange<Int> { index * stopsPerProvince + 1 ... (index + 1) * stopsPerProvince }
-        var farShore: Bool { index >= provincesPerShore }
+        var chart: Int { index / provincesPerChart }
+        var farShore: Bool { index % provincesPerChart >= provincesPerShore }
         /// The last province of each shore is a scatter of islands rather than a stretch of road.
         var isles: Bool { index % provincesPerShore == provincesPerShore - 1 }
     }
@@ -87,9 +92,9 @@ enum Journey {
         static let bottomMargin: CGFloat = 115
         static let realmHeight = topMargin + 12 * band + sea + bottomMargin
 
-        /// Bottom edge of a province's band on the realm sheet; the band runs `band` above it.
+        /// Bottom edge of a province's band on its chart; the band runs `band` above it.
         static func bandBottom(_ index: Int) -> CGFloat {
-            let shore = CGFloat(index / provincesPerShore)
+            let shore = CGFloat(index % provincesPerChart / provincesPerShore)
             let k = CGFloat(index % provincesPerShore)
             return realmHeight - bottomMargin - shore * (6 * band + sea) - k * band
         }

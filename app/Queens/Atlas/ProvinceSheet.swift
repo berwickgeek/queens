@@ -185,7 +185,10 @@ enum ProvinceSheet {
     }
 
     private static let ordinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth",
-                                   "Seventh", "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth"]
+                                   "Seventh", "Eighth", "Ninth", "Tenth", "Eleventh", "Twelfth",
+                                   "Thirteenth", "Fourteenth", "Fifteenth", "Sixteenth", "Seventeenth",
+                                   "Eighteenth", "Nineteenth", "Twentieth", "Twenty-first", "Twenty-second",
+                                   "Twenty-third", "Twenty-fourth"]
 
     static func boundary(_ province: Journey.Province, states: [Journey.StopState]) -> CGFloat {
         P.boundary(province, states: states)

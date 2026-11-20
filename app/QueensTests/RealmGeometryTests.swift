@@ -78,4 +78,31 @@ final class RealmGeometryTests: XCTestCase {
                        L.realmStop(Journey.Province(size: 7, index: 2), 5).y - 14, accuracy: 0.001)
         XCTAssertEqual(R.boundary(size: 7, states: Journey.stopStates(solved: Array(repeating: true, count: 240))), -40)
     }
+
+    func testSecondChartRepeatsTheFirstChartsLayout() {
+        let route = R.route(size: 7, chart: 1, stops: 480)
+        let first = R.route(size: 7, chart: 0, stops: 480)
+        XCTAssertEqual(route.stops.count, 240)
+        XCTAssertEqual(route.stops, first.stops)
+        for i in 0..<240 {
+            let want = L.realmStop(Journey.Province(size: 7, index: 12 + i / 20), i % 20)
+            XCTAssertEqual(route.points[route.stops[i]].x, want.x, accuracy: 0.001)
+            XCTAssertEqual(route.points[route.stops[i]].y, want.y, accuracy: 0.001)
+        }
+        XCTAssertTrue(R.route(size: 10, chart: 1, stops: 240).points.isEmpty)
+    }
+
+    func testBoundaryOnEachChart() {
+        let midFirst = Journey.stopStates(solved: (0..<480).map { $0 < 45 })
+        XCTAssertEqual(R.boundary(size: 7, chart: 1, states: midFirst), L.realmHeight)
+        let midSecond = Journey.stopStates(solved: (0..<480).map { $0 < 285 })
+        XCTAssertEqual(R.boundary(size: 7, chart: 0, states: midSecond), -40)
+        XCTAssertEqual(R.boundary(size: 7, chart: 1, states: midSecond),
+                       L.realmStop(Journey.Province(size: 7, index: 14), 5).y - 14, accuracy: 0.001)
+    }
+
+    func testPuzzleNamesStayDistinctAcrossFourSets() {
+        let names = (7...11).flatMap { n in (1...480).map { Naming.puzzleName(size: n, number: $0) } }
+        XCTAssertEqual(Set(names).count, names.count)
+    }
 }
